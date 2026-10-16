@@ -1,6 +1,46 @@
-node_modules
-.next
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# environment variables
 .env
-.env.local
-next-env.d.ts
+.env.*
+!.env.example
+
+# typescript
 *.tsbuildinfo
+next-env.d.ts
+
+# logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# coverage
+coverage/
+.nyc_output/
+
+# build files
+dist/
+build/
+
+# cache
+.cache/
+.parcel-cache/
+.turbo/
+.vite/
+
+# vscode test
+.vscode-test
+
+# package managers
+.pnpm-store
+.npm
+
+# vercel
+.vercel
