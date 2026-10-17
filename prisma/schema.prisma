@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  OWNER
+  ADMIN
+  MODERATOR
+  MEMBER
+}
+
+enum ResourceKind {
+  FILE
+  LINK
+}
+
+// NEW in step 8
+enum NotificationKind {
+  NEW_POST
+  MEMBER_JOINED
+  ROLE_CHANGED
+  POST_REACTION
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  image        String?
+  bio          String?
+  createdAt    DateTime @default(now())
+
+  memberships        Membership[]
+  posts              Post[]
+  messages           Message[]
+  resources          Resource[]
+  reactions          Reaction[]
+  studySessions      StudySession[]
+  notifications      Notification[] @relation("NotificationRecipient") // NEW in step 8
+  actedNotifications Notification[] @relation("NotificationActor") // NEW in step 8
+}
+
+model Group {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  subject     String?
+  isPrivate   Boolean  @default(false)
+  inviteCode  String   @unique @default(cuid())
+  createdAt   DateTime @default(now())
+
+  memberships   Membership[]
+  posts         Post[]
+  messages      Message[]
+  resources     Resource[]
+  studySessions StudySession[]
+  notifications Notification[] // NEW in step 8
+}
+
+// Roles live here so pinned posts and moderation tools can be added later
+// without a schema change.
+model Membership {
+  id       String   @id @default(cuid())
+  userId   String
+  groupId  String
+  role     Role     @default(MEMBER)
+  joinedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, groupId])
+  @@index([groupId])
+}
+
+model Post {
+  id        String   @id @default(cuid())
+  groupId   String
+  authorId  String
+  body      String
+  pinned    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+
+  @@index([groupId, createdAt])
+}
+
+model Message {
+  id        String   @id @default(cuid())
+  groupId   String
+  authorId  String
+  body      String
+  createdAt DateTime @default(now())
+
+  group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reactions Reaction[]
+
+  @@index([groupId, createdAt])
+}
+
+model Resource {
+  id         String       @id @default(cuid())
+  groupId    String
+  uploaderId String
+  title      String
+  kind       ResourceKind
+  url        String
+  sizeBytes  Int?
+  tags       String[]
+  createdAt  DateTime     @default(now())
+
+  group    Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  uploader User  @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+}
+
+// One reaction table for both posts and chat messages.
+model Reaction {
+  id        String  @id @default(cuid())
+  emoji     String
+  userId    String
+  postId    String?
+  messageId String?
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId, emoji])
+  @@unique([userId, messageId, emoji])
+}
+
+model StudySession {
+  id        String   @id @default(cuid())
+  userId    String
+  groupId   String
+  topic     String?
+  minutes   Int
+  startedAt DateTime @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, startedAt])
+  @@index([groupId, startedAt])
+}
+
+// NEW in step 8: one row per person who should be told about something.
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String // who receives it
+  actorId   String? // who caused it (kept as null if that account is deleted)
+  groupId   String
+  kind      NotificationKind
+  message   String
+  link      String
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  user  User  @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
+  actor User? @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
+  group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt, createdAt])
+}

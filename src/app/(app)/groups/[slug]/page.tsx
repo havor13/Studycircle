@@ -1,0 +1,351 @@
+import Link from "next/link";
+import { headers } from "next/headers";
+import { notFound, redirect } from "next/navigation";
+import { auth } from "@/auth";
+import { db } from "@/lib/db";
+import { changeRole, leaveGroup, removeMember, transferOwnership } from "@/app/actions/members";
+import { deletePost, togglePin } from "@/app/actions/posts";
+import { togglePostReaction } from "@/app/actions/reactions";
+import { deleteResource } from "@/app/actions/resources";
+import { InviteLink } from "@/components/invite-link";
+import { PostForm } from "@/components/post-form";
+import { ResourceForm } from "@/components/resource-form";
+import { FileUploadForm } from "@/components/file-upload-form";
+import { formatBytes } from "@/lib/files";
+import {
+  ROLE_RANK,
+  assignableRoles,
+  canModerate,
+  canRemove,
+  isManager,
+} from "@/lib/permissions";
+import { REACTION_EMOJIS } from "@/lib/reactions";
+
+export default async function GroupPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const userId = session.user.id;
+
+  const { slug } = await params;
+  const group = await db.group.findUnique({ where: { slug } });
+  if (!group) notFound();
+
+  const membership = await db.membership.findUnique({
+    where: { userId_groupId: { userId, groupId: group.id } },
+  });
+  if (!membership) notFound(); // hides circles you are not a member of
+
+  const [posts, members, resources] = await Promise.all([
+    db.post.findMany({
+      where: { groupId: group.id },
+      include: {
+        author: { select: { name: true } },
+        reactions: { select: { emoji: true, userId: true } },
+      },
+      orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
+      take: 50,
+    }),
+    db.membership.findMany({
+      where: { groupId: group.id },
+      include: { user: { select: { id: true, name: true } } },
+    }),
+    db.resource.findMany({
+      where: { groupId: group.id },
+      include: { uploader: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 30,
+    }),
+  ]);
+  members.sort(
+    (a, b) => ROLE_RANK[b.role] - ROLE_RANK[a.role] || a.user.name.localeCompare(b.user.name),
+  );
+
+  const myRole = membership.role;
+  const manager = isManager(myRole);
+
+  // Full link built from the address the page was opened on, so it is right
+  // on localhost and on your real domain without any setting.
+  let inviteUrl = "";
+  if (manager) {
+    const h = await headers();
+    const host = h.get("x-forwarded-host") ?? h.get("host") ?? "localhost:3000";
+    const proto = h.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+    inviteUrl = `${proto}://${host}/join/${group.inviteCode}`;
+  }
+  const moderator = canModerate(myRole);
+
+  return (
+    <div>
+      <h1 className="font-display text-4xl font-bold">{group.name}</h1>
+      {group.subject && <p className="mt-1 text-muted">{group.subject}</p>}
+      {group.description && <p className="mt-4 max-w-2xl">{group.description}</p>}
+
+      <div className="mt-5 flex flex-wrap gap-3">
+        <Link
+          href={`/groups/${group.slug}/chat`}
+          className="inline-block rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-dark"
+        >
+          Open chat
+        </Link>
+        <Link
+          href={`/groups/${group.slug}/progress`}
+          className="inline-block rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand"
+        >
+          Progress
+        </Link>
+      </div>
+
+      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+        {/* Posts */}
+        <section className="space-y-4">
+          <PostForm groupId={group.id} />
+
+          {posts.length === 0 ? (
+            <p className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-muted">
+              No posts yet. Start the conversation.
+            </p>
+          ) : (
+            <ul className="space-y-4">
+              {posts.map((post) => {
+                const mine = post.authorId === userId;
+                return (
+                  <li key={post.id} className="rounded-2xl border border-line bg-surface p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="text-sm">
+                        <span className="font-semibold">{post.author.name}</span>
+                        <span className="ml-2 text-muted">
+                          {post.createdAt.toLocaleDateString("en-US", {
+                            month: "short",
+                            day: "numeric",
+                          })}
+                        </span>
+                        {post.pinned && (
+                          <span className="ml-2 rounded-full bg-brand/10 px-2 py-0.5 text-xs font-semibold text-brand">
+                            Pinned
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-3 text-xs font-semibold">
+                        {moderator && (
+                          <form action={togglePin.bind(null, post.id)}>
+                            <button className="text-muted hover:text-brand">
+                              {post.pinned ? "Unpin" : "Pin"}
+                            </button>
+                          </form>
+                        )}
+                        {(mine || moderator) && (
+                          <form action={deletePost.bind(null, post.id)}>
+                            <button className="text-muted hover:text-red-600">Delete</button>
+                          </form>
+                        )}
+                      </div>
+                    </div>
+                    <p className="mt-3 whitespace-pre-wrap">{post.body}</p>
+
+                    {/* Reactions */}
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {REACTION_EMOJIS.map((emoji) => {
+                        const forEmoji = post.reactions.filter((r) => r.emoji === emoji);
+                        const reacted = forEmoji.some((r) => r.userId === userId);
+                        return (
+                          <form key={emoji} action={togglePostReaction.bind(null, post.id, emoji)}>
+                            <button
+                              aria-pressed={reacted}
+                              aria-label={`React with ${emoji}`}
+                              className={`rounded-full border px-2.5 py-1 text-sm transition-colors ${
+                                reacted
+                                  ? "border-brand bg-brand/10"
+                                  : "border-line hover:border-brand"
+                              }`}
+                            >
+                              {emoji}
+                              {forEmoji.length > 0 && (
+                                <span className="ml-1 text-xs font-semibold">{forEmoji.length}</span>
+                              )}
+                            </button>
+                          </form>
+                        );
+                      })}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </section>
+
+        {/* Sidebar */}
+        <aside className="space-y-6">
+          {manager && (
+            <div className="rounded-2xl border border-line bg-surface p-4 text-sm">
+              <h2 className="font-display text-lg font-bold">Invite link</h2>
+              <InviteLink url={inviteUrl} />
+              <p className="mt-2 text-xs text-muted">
+                Anyone with this link can join as a member once they are logged in.
+              </p>
+            </div>
+          )}
+
+          {/* Resources */}
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <h2 className="font-display text-lg font-bold">Resources ({resources.length})</h2>
+
+            {resources.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">
+                Nothing shared yet. Add a link or upload a file for the circle.
+              </p>
+            ) : (
+              <ul className="mt-3 space-y-3">
+                {resources.map((res) => (
+                  <li key={res.id} className="text-sm">
+                    <a
+                      href={res.kind === "FILE" ? `/api/files/${res.id}` : res.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-semibold text-brand hover:underline"
+                    >
+                      {res.kind === "FILE" ? "📎 " : ""}
+                      {res.title}
+                    </a>
+                    <p className="text-xs text-muted">
+                      Added by {res.uploader.name}
+                      {res.kind === "FILE" && res.sizeBytes ? ` · ${formatBytes(res.sizeBytes)}` : ""}
+                    </p>
+                    {res.tags.length > 0 && (
+                      <p className="mt-1 flex flex-wrap gap-1">
+                        {res.tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="rounded-full border border-line px-2 py-0.5 text-xs text-muted"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                    {(res.uploaderId === userId || moderator) && (
+                      <form action={deleteResource.bind(null, res.id)} className="mt-1">
+                        <button className="text-xs font-semibold text-muted hover:text-red-600">
+                          Delete
+                        </button>
+                      </form>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <details className="mt-4 border-t border-line pt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">
+                Add a resource
+              </summary>
+              <ResourceForm groupId={group.id} />
+            </details>
+
+            <details className="mt-3 border-t border-line pt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">
+                Upload a file
+              </summary>
+              <FileUploadForm groupId={group.id} />
+            </details>
+          </div>
+
+          {/* Members */}
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <h2 className="font-display text-lg font-bold">Members ({members.length})</h2>
+            <ul className="mt-3 space-y-3">
+              {members.map((m) => {
+                const options = assignableRoles(myRole, m.role);
+                const removable = canRemove(myRole, m.role);
+                return (
+                  <li key={m.id} className="text-sm">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-semibold">
+                        {m.user.name}
+                        {m.userId === userId && <span className="text-muted"> (you)</span>}
+                      </span>
+                      <span className="text-xs text-muted">{m.role.toLowerCase()}</span>
+                    </div>
+                    {(options.length > 0 || removable) && m.userId !== userId && (
+                      <div className="mt-1 flex items-center gap-2">
+                        {options.length > 0 && (
+                          <form
+                            action={changeRole.bind(null, group.id, m.userId)}
+                            className="flex items-center gap-1"
+                          >
+                            <select
+                              name="role"
+                              defaultValue={m.role}
+                              aria-label={`Role for ${m.user.name}`}
+                              className="rounded border border-line bg-surface px-1.5 py-0.5 text-xs"
+                            >
+                              {/* current role first so it shows as selected */}
+                              <option value={m.role}>{m.role.toLowerCase()}</option>
+                              {options.map((r) => (
+                                <option key={r} value={r}>
+                                  {r.toLowerCase()}
+                                </option>
+                              ))}
+                            </select>
+                            <button className="text-xs font-semibold text-brand hover:underline">
+                              Save
+                            </button>
+                          </form>
+                        )}
+                        {removable && (
+                          <form action={removeMember.bind(null, group.id, m.userId)}>
+                            <button className="text-xs font-semibold text-muted hover:text-red-600">
+                              Remove
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    )}
+                    {myRole === "OWNER" && m.userId !== userId && (
+                      <details className="mt-1">
+                        <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-brand">
+                          Make owner
+                        </summary>
+                        <div className="mt-1 rounded-lg border border-line p-2 text-xs">
+                          <p>
+                            {m.user.name} becomes the owner and you become an admin. You cannot
+                            undo this yourself.
+                          </p>
+                          <form
+                            action={transferOwnership.bind(null, group.id, m.userId)}
+                            className="mt-2"
+                          >
+                            <button className="rounded bg-brand px-2 py-1 font-semibold text-white hover:bg-brand-dark">
+                              Yes, transfer ownership
+                            </button>
+                          </form>
+                        </div>
+                      </details>
+                    )}
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+
+          {myRole !== "OWNER" && (
+            <form action={leaveGroup.bind(null, group.id)}>
+              <button className="text-sm font-semibold text-muted hover:text-red-600">
+                Leave this circle
+              </button>
+            </form>
+          )}
+          {myRole === "OWNER" && (
+            <p className="text-xs text-muted">
+              The owner cannot leave. To step down, make another member the owner first.
+            </p>
+          )}
+        </aside>
+      </div>
+    </div>
+  );
+}
