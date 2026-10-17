@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { deleteMessage } from "@/app/actions/messages";
 import { toggleMessageReaction } from "@/app/actions/reactions";
+import { Avatar } from "@/components/avatar";
 import { ChatForm } from "@/components/chat-form";
 import { ChatLog } from "@/components/chat-log";
 import { LocalTime } from "@/components/local-time";
@@ -35,7 +36,7 @@ export default async function ChatPage({
   const recent = await db.message.findMany({
     where: { groupId: group.id },
     include: {
-      author: { select: { name: true } },
+      author: { select: { name: true, image: true } },
       reactions: { select: { emoji: true, userId: true } },
     },
     orderBy: { createdAt: "desc" },
@@ -78,6 +79,11 @@ export default async function ChatPage({
                     }`}
                   >
                     <div className={`text-xs ${mine ? "text-white/80" : "text-muted"}`}>
+                      {!mine && (
+                        <span className="mr-1.5 inline-block align-middle">
+                          <Avatar userId={m.authorId} name={m.author.name} image={m.author.image} size={18} />
+                        </span>
+                      )}
                       <span className="font-semibold">{mine ? "You" : m.author.name}</span>
                       <span className="mx-1">·</span>
                       <LocalTime iso={m.createdAt.toISOString()} />

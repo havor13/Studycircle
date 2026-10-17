@@ -6,8 +6,12 @@ import { db } from "@/lib/db";
 import { changeRole, leaveGroup, removeMember, transferOwnership } from "@/app/actions/members";
 import { deletePost, togglePin } from "@/app/actions/posts";
 import { togglePostReaction } from "@/app/actions/reactions";
+import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
+import { Avatar } from "@/components/avatar";
+import { EventForm } from "@/components/event-form";
 import { InviteLink } from "@/components/invite-link";
+import { LocalTime } from "@/components/local-time";
 import { PostForm } from "@/components/post-form";
 import { ResourceForm } from "@/components/resource-form";
 import { FileUploadForm } from "@/components/file-upload-form";
@@ -39,11 +43,11 @@ export default async function GroupPage({
   });
   if (!membership) notFound(); // hides circles you are not a member of
 
-  const [posts, members, resources] = await Promise.all([
+  const [posts, members, resources, events] = await Promise.all([
     db.post.findMany({
       where: { groupId: group.id },
       include: {
-        author: { select: { name: true } },
+        author: { select: { name: true, image: true } },
         reactions: { select: { emoji: true, userId: true } },
       },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
@@ -51,13 +55,23 @@ export default async function GroupPage({
     }),
     db.membership.findMany({
       where: { groupId: group.id },
-      include: { user: { select: { id: true, name: true } } },
+      include: { user: { select: { id: true, name: true, image: true } } },
     }),
     db.resource.findMany({
       where: { groupId: group.id },
       include: { uploader: { select: { name: true } } },
       orderBy: { createdAt: "desc" },
       take: 30,
+    }),
+    // Upcoming sessions (a session stays listed for an hour after it starts).
+    db.studyEvent.findMany({
+      where: { groupId: group.id, startsAt: { gte: new Date(Date.now() - 60 * 60 * 1000) } },
+      include: {
+        creator: { select: { name: true } },
+        rsvps: { include: { user: { select: { id: true, name: true } } } },
+      },
+      orderBy: { startsAt: "asc" },
+      take: 10,
     }),
   ]);
   members.sort(
@@ -116,7 +130,10 @@ export default async function GroupPage({
                   <li key={post.id} className="rounded-2xl border border-line bg-surface p-5">
                     <div className="flex items-start justify-between gap-3">
                       <div className="text-sm">
-                        <span className="font-semibold">{post.author.name}</span>
+                        <span className="inline-flex items-center gap-1.5 font-semibold">
+                          <Avatar userId={post.authorId} name={post.author.name} image={post.author.image} size={22} />
+                          {post.author.name}
+                        </span>
                         <span className="ml-2 text-muted">
                           {post.createdAt.toLocaleDateString("en-US", {
                             month: "short",
@@ -189,6 +206,65 @@ export default async function GroupPage({
               </p>
             </div>
           )}
+
+          {/* Study sessions */}
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <h2 className="font-display text-lg font-bold">Study sessions</h2>
+
+            {events.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">No sessions planned. Propose a time.</p>
+            ) : (
+              <ul className="mt-3 space-y-4">
+                {events.map((ev) => {
+                  const going = ev.rsvps.some((r) => r.userId === userId);
+                  const names = ev.rsvps.map((r) => r.user.name);
+                  return (
+                    <li key={ev.id} className="text-sm">
+                      <p className="font-semibold">{ev.title}</p>
+                      <p className="text-xs text-muted">
+                        <LocalTime iso={ev.startsAt.toISOString()} /> · {ev.durationMinutes} min
+                      </p>
+                      {ev.location && <p className="mt-0.5 break-words text-xs">{ev.location}</p>}
+                      {ev.notes && <p className="mt-0.5 whitespace-pre-wrap break-words text-xs text-muted">{ev.notes}</p>}
+                      <p className="mt-1 text-xs text-muted">
+                        {names.length === 0
+                          ? "Nobody has said they are going yet."
+                          : `${names.length} going: ${names.slice(0, 4).join(", ")}${names.length > 4 ? ` and ${names.length - 4} more` : ""}`}
+                      </p>
+                      <div className="mt-1 flex items-center gap-3">
+                        <form action={toggleRsvp.bind(null, ev.id)}>
+                          <button
+                            aria-pressed={going}
+                            className={`rounded-lg border px-2.5 py-1 text-xs font-semibold ${
+                              going
+                                ? "border-brand bg-brand/10 text-brand"
+                                : "border-line hover:border-brand"
+                            }`}
+                          >
+                            {going ? "Going ✓ (tap to cancel)" : "I'm going"}
+                          </button>
+                        </form>
+                        {(ev.creatorId === userId || moderator) && (
+                          <form action={deleteEvent.bind(null, ev.id)}>
+                            <button className="text-xs font-semibold text-muted hover:text-red-600">
+                              Delete
+                            </button>
+                          </form>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <details className="mt-4 border-t border-line pt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">
+                Propose a session
+              </summary>
+              <EventForm groupId={group.id} />
+            </details>
+          </div>
 
           {/* Resources */}
           <div className="rounded-2xl border border-line bg-surface p-4">
@@ -264,9 +340,12 @@ export default async function GroupPage({
                 return (
                   <li key={m.id} className="text-sm">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-semibold">
-                        {m.user.name}
-                        {m.userId === userId && <span className="text-muted"> (you)</span>}
+                      <span className="flex items-center gap-2 font-semibold">
+                        <Avatar userId={m.userId} name={m.user.name} image={m.user.image} size={26} />
+                        <span>
+                          {m.user.name}
+                          {m.userId === userId && <span className="text-muted"> (you)</span>}
+                        </span>
                       </span>
                       <span className="text-xs text-muted">{m.role.toLowerCase()}</span>
                     </div>

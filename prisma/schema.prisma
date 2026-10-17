@@ -26,6 +26,7 @@ enum NotificationKind {
   MEMBER_JOINED
   ROLE_CHANGED
   POST_REACTION
+  NEW_EVENT // NEW in step 13
 }
 
 model User {
@@ -45,6 +46,8 @@ model User {
   studySessions      StudySession[]
   notifications      Notification[] @relation("NotificationRecipient") // NEW in step 8
   actedNotifications Notification[] @relation("NotificationActor") // NEW in step 8
+  createdEvents      StudyEvent[] // NEW in step 13
+  eventRsvps         EventRsvp[] // NEW in step 13
 }
 
 model Group {
@@ -63,6 +66,7 @@ model Group {
   resources     Resource[]
   studySessions StudySession[]
   notifications Notification[] // NEW in step 8
+  events        StudyEvent[] // NEW in step 13
 }
 
 // Roles live here so pinned posts and moderation tools can be added later
@@ -176,4 +180,36 @@ model Notification {
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
 
   @@index([userId, readAt, createdAt])
+}
+
+// NEW in step 13: a planned group study session.
+model StudyEvent {
+  id              String   @id @default(cuid())
+  groupId         String
+  creatorId       String
+  title           String
+  startsAt        DateTime
+  durationMinutes Int      @default(60)
+  location        String? // a room, or a meeting link
+  notes           String?
+  createdAt       DateTime @default(now())
+
+  group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  rsvps   EventRsvp[]
+
+  @@index([groupId, startsAt])
+}
+
+// One row per person who says "I'm going".
+model EventRsvp {
+  id        String   @id @default(cuid())
+  eventId   String
+  userId    String
+  createdAt DateTime @default(now())
+
+  event StudyEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, userId])
 }

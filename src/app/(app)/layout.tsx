@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { logout } from "@/app/actions/auth";
+import { Avatar } from "@/components/avatar";
 import { Logo } from "@/components/logo";
 import { db } from "@/lib/db";
 
@@ -9,9 +10,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const unread = await db.notification.count({
-    where: { userId: session.user.id, readAt: null },
-  });
+  const [unread, me] = await Promise.all([
+    db.notification.count({ where: { userId: session.user.id, readAt: null } }),
+    db.user.findUnique({ where: { id: session.user.id }, select: { image: true } }),
+  ]);
 
   return (
     <div className="min-h-screen">
@@ -36,8 +38,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </span>
               )}
             </Link>
-            <Link href="/account" className="hidden text-muted hover:text-brand sm:inline">
-              {session.user.name}
+            <Link
+              href="/account"
+              aria-label="Your account"
+              className="flex items-center gap-2 text-muted hover:text-brand"
+            >
+              <Avatar userId={session.user.id} name={session.user.name ?? "?"} image={me?.image} size={30} />
+              <span className="hidden sm:inline">{session.user.name}</span>
             </Link>
             <form action={logout}>
               <button className="rounded-lg border border-line px-3 py-1.5 font-semibold hover:border-brand">
