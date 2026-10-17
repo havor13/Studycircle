@@ -20,6 +20,24 @@ export const groupSchema = z.object({
   description: z.string().trim().max(500).optional(),
 });
 
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Enter your current password."),
+    newPassword: z
+      .string()
+      .min(8, "Use at least 8 characters.")
+      .max(72, "Use 72 characters or fewer."),
+    confirmPassword: z.string().min(1, "Type the new password again."),
+  })
+  .refine((v) => v.newPassword === v.confirmPassword, {
+    path: ["confirmPassword"],
+    message: "The two new passwords do not match.",
+  })
+  .refine((v) => v.newPassword !== v.currentPassword, {
+    path: ["newPassword"],
+    message: "Choose a password different from the current one.",
+  });
+
 export type FormState = {
   error?: string;
   fieldErrors?: Record<string, string[] | undefined>;

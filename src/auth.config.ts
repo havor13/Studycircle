@@ -1,7 +1,6 @@
 import type { NextAuthConfig } from "next-auth";
 
-const PROTECTED_PREFIXES = ["/dashboard", "/groups", "/join", "/notifications"];
-const AUTH_PAGES = ["/login", "/register"];
+const PROTECTED_PREFIXES = ["/dashboard", "/groups", "/join", "/notifications", "/account"];
 
 export const authConfig = {
   pages: { signIn: "/login" },
@@ -24,10 +23,8 @@ export const authConfig = {
         return Response.redirect(url);
       }
 
-      if (AUTH_PAGES.includes(path) && loggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
-      }
-
+      // Logged-in visitors on /login or /register are sent on by those pages themselves,
+      // because only the server (not this edge check) can confirm the account still exists.
       return true;
     },
     jwt({ token, user }) {

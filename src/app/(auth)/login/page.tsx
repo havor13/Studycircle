@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
+import { auth } from "@/auth";
 import { AuthForm } from "@/components/auth-form";
 
 export const metadata: Metadata = { title: "Log in" };
@@ -9,6 +11,10 @@ export default async function LoginPage({
   searchParams: Promise<{ redirectTo?: string }>;
 }) {
   const { redirectTo } = await searchParams;
+
+  // Already logged in (and the account still exists)? Skip the form.
+  const session = await auth();
+  if (session?.user?.id) redirect("/dashboard");
 
   return (
     <>

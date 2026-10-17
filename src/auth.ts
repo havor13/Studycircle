@@ -7,6 +7,23 @@ import { loginSchema } from "@/lib/validations";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    // Runs on the server (not the edge), so it can ask the database whether the
+    // account still exists. Returning null ends the session for a deleted user.
+    async jwt({ token, user }) {
+      if (user?.id) {
+        token.id = user.id;
+        return token;
+      }
+      if (!token.id) return null;
+      const exists = await db.user.findUnique({
+        where: { id: token.id as string },
+        select: { id: true },
+      });
+      return exists ? token : null;
+    },
+  },
   providers: [
     Credentials({
       async authorize(raw) {

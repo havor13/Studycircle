@@ -36,7 +36,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                 </span>
               )}
             </Link>
-            <span className="hidden text-muted sm:inline">{session.user.name}</span>
+            <Link href="/account" className="hidden text-muted hover:text-brand sm:inline">
+              {session.user.name}
+            </Link>
             <form action={logout}>
               <button className="rounded-lg border border-line px-3 py-1.5 font-semibold hover:border-brand">
                 Log out
