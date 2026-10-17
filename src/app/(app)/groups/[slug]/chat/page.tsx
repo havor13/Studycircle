@@ -51,10 +51,10 @@ export default async function ChatPage({
       </Link>
       <h1 className="mt-2 font-display text-3xl font-bold">{group.name} chat</h1>
       <p className="mb-4 mt-1 text-sm text-muted">
-        New messages appear automatically every few seconds. Showing the latest 100.
+        New messages appear as they are sent. Showing the latest 100.
       </p>
 
-      <ChatLog count={messages.length}>
+      <ChatLog groupId={group.id} count={messages.length}>
         {messages.length === 0 ? (
           <p className="py-10 text-center text-muted">No messages yet. Say hello.</p>
         ) : (

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { notify } from "@/lib/notifications";
 import { requireMember } from "@/lib/permissions";
+import { pingChat } from "@/lib/pusher-server";
 import { REACTION_EMOJIS } from "@/lib/reactions";
 
 /** Adds the reaction if you haven't given it, removes it if you have. */
@@ -62,4 +63,5 @@ export async function toggleMessageReaction(messageId: string, emoji: string) {
   }
 
   revalidatePath(`/groups/${slug}/chat`);
+  await pingChat(message.groupId);
 }

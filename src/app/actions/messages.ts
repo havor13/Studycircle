@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { canModerate, requireMember } from "@/lib/permissions";
+import { pingChat } from "@/lib/pusher-server";
 import type { FormState } from "@/lib/validations";
 
 const messageSchema = z.object({
@@ -27,6 +28,7 @@ export async function sendMessage(
   });
 
   revalidatePath(`/groups/${slug}/chat`);
+  await pingChat(groupId);
   return {};
 }
 
@@ -40,4 +42,5 @@ export async function deleteMessage(messageId: string) {
 
   await db.message.delete({ where: { id: message.id } });
   revalidatePath(`/groups/${slug}/chat`);
+  await pingChat(message.groupId);
 }
