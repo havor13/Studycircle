@@ -32,6 +32,18 @@ export default function NewGroupPage() {
             )}
           </div>
         ))}
+
+        <div className="flex items-start gap-3 rounded-lg border border-line bg-surface p-3">
+          <input id="listed" name="listed" type="checkbox" className="mt-1 h-4 w-4" />
+          <label htmlFor="listed" className="text-sm">
+            <span className="font-semibold">Show this circle in Find circles</span>
+            <span className="mt-0.5 block text-muted">
+              Anyone logged in can find it and join. Leave this off to keep the circle invite-only.
+              You can change it later on the circle page.
+            </span>
+          </label>
+        </div>
+
         <button
           disabled={pending}
           className="rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark disabled:opacity-60"

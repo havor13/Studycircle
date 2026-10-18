@@ -26,6 +26,8 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
   const { name, subject, description } = parsed.data;
+  // A tick box sends "on" when ticked and nothing at all when not. Off is the safe default.
+  const listed = formData.get("listed") === "on";
 
   let slug = slugify(name);
   if (await db.group.findUnique({ where: { slug } })) {
@@ -39,6 +41,7 @@ export async function createGroup(_prev: FormState, formData: FormData): Promise
       slug,
       subject: subject || null,
       description: description || null,
+      listed,
       memberships: { create: { userId: session.user.id, role: "OWNER" } },
     },
   });
