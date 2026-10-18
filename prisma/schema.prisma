@@ -27,6 +27,7 @@ enum NotificationKind {
   ROLE_CHANGED
   POST_REACTION
   NEW_EVENT // NEW in step 13
+  EVENT_REMINDER // NEW in step 18
 }
 
 model User {
@@ -197,6 +198,7 @@ model StudyEvent {
   location        String? // a room, or a meeting link
   notes           String?
   createdAt       DateTime @default(now())
+  reminderSentAt  DateTime? // NEW in step 18: set once the reminder went out
 
   group   Group       @relation(fields: [groupId], references: [id], onDelete: Cascade)
   creator User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
