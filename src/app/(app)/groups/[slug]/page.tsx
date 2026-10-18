@@ -11,12 +11,14 @@ import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
 import { EventForm } from "@/components/event-form";
+import { InviteEmailForm } from "@/components/invite-email-form";
 import { InviteLink } from "@/components/invite-link";
 import { LocalTime } from "@/components/local-time";
 import { PostForm } from "@/components/post-form";
 import { ResourceForm } from "@/components/resource-form";
 import { FileUploadForm } from "@/components/file-upload-form";
 import { formatBytes } from "@/lib/files";
+import { mailConfigured } from "@/lib/mailer";
 import {
   ROLE_RANK,
   assignableRoles,
@@ -205,6 +207,10 @@ export default async function GroupPage({
               <p className="mt-2 text-xs text-muted">
                 Anyone with this link can join as a member once they are logged in.
               </p>
+              <details className="mt-3 border-t border-line pt-3">
+                <summary className="cursor-pointer text-sm font-semibold text-brand">Email an invite</summary>
+                <InviteEmailForm groupId={group.id} configured={mailConfigured()} />
+              </details>
             </div>
           )}
 

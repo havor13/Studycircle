@@ -49,6 +49,7 @@ model User {
   actedNotifications Notification[] @relation("NotificationActor") // NEW in step 8
   createdEvents      StudyEvent[] // NEW in step 13
   eventRsvps         EventRsvp[] // NEW in step 13
+  sentInvites        InviteEmail[] // NEW in step 17
 }
 
 model Group {
@@ -69,6 +70,7 @@ model Group {
   studySessions StudySession[]
   notifications Notification[] // NEW in step 8
   events        StudyEvent[] // NEW in step 13
+  inviteEmails  InviteEmail[] // NEW in step 17
 }
 
 // Roles live here so pinned posts and moderation tools can be added later
@@ -214,4 +216,20 @@ model EventRsvp {
   user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([eventId, userId])
+}
+
+// NEW in step 17: one row per invitation email that was actually sent.
+// Used for the daily limit and to avoid inviting the same address twice in a week.
+model InviteEmail {
+  id          String   @id @default(cuid())
+  groupId     String
+  invitedById String
+  email       String
+  createdAt   DateTime @default(now())
+
+  group     Group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedBy User  @relation(fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@index([groupId, createdAt])
+  @@index([invitedById, createdAt])
 }
