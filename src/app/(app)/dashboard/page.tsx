@@ -30,9 +30,14 @@ export default async function DashboardPage() {
               : `You're in ${memberships.length} ${memberships.length === 1 ? "circle" : "circles"}.`}
           </p>
         </div>
-        <Link href="/groups/new" className="rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">
-          Create a circle
-        </Link>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/discover" className="rounded-lg border border-line px-5 py-2.5 font-semibold hover:border-brand">
+            Find circles
+          </Link>
+          <Link href="/groups/new" className="rounded-lg bg-brand px-5 py-2.5 font-semibold text-white hover:bg-brand-dark">
+            Create a circle
+          </Link>
+        </div>
       </div>
 
       <JoinByCodeForm />

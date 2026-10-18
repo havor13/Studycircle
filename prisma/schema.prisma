@@ -58,6 +58,7 @@ model Group {
   description String?
   subject     String?
   isPrivate   Boolean  @default(false)
+  listed      Boolean  @default(false) // NEW in step 16: shown in Find circles. Off until an admin turns it on.
   inviteCode  String   @unique @default(cuid())
   createdAt   DateTime @default(now())
 

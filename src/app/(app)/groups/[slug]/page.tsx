@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { changeRole, leaveGroup, removeMember, transferOwnership } from "@/app/actions/members";
 import { deletePost, togglePin } from "@/app/actions/posts";
 import { togglePostReaction } from "@/app/actions/reactions";
+import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
@@ -329,6 +330,29 @@ export default async function GroupPage({
               <FileUploadForm groupId={group.id} />
             </details>
           </div>
+
+          {/* Visibility (managers only) */}
+          {manager && (
+            <div className="rounded-2xl border border-line bg-surface p-4">
+              <h2 className="font-display text-lg font-bold">Find circles</h2>
+              <p className="mt-1 text-sm text-muted">
+                {group.listed
+                  ? "This circle is listed. Anyone with an account can find it and join."
+                  : "This circle is hidden. People can only join with the invite link."}
+              </p>
+              {!group.listed && (
+                <p className="mt-1 text-xs text-muted">
+                  If you list it, its name, subject, description and member count appear in search, and anyone who
+                  joins sees all posts, chat and files.
+                </p>
+              )}
+              <form action={setListed.bind(null, group.id, !group.listed)} className="mt-3">
+                <button className="rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:border-brand">
+                  {group.listed ? "Remove from search" : "List in search"}
+                </button>
+              </form>
+            </div>
+          )}
 
           {/* Members */}
           <div className="rounded-2xl border border-line bg-surface p-4">
