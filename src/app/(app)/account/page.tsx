@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { Avatar } from "@/components/avatar";
 import { AvatarForm } from "@/components/avatar-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { EmailSettings } from "@/components/email-settings";
+import { mailConfigured } from "@/lib/mailer";
 
 export const metadata: Metadata = { title: "Account" };
 
@@ -14,7 +16,7 @@ export default async function AccountPage() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true, image: true },
+    select: { name: true, email: true, image: true, emailNotifications: true },
   });
   if (!user) redirect("/login");
 
@@ -31,6 +33,15 @@ export default async function AccountPage() {
           <Avatar userId={session.user.id} name={user.name} image={user.image} size={72} />
           <AvatarForm hasPicture={Boolean(user.image)} />
         </div>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
+        <h2 className="font-display text-lg font-bold">Email notifications</h2>
+        <EmailSettings
+          email={user.email}
+          enabled={user.emailNotifications}
+          configured={mailConfigured()}
+        />
       </section>
 
       <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
