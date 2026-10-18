@@ -9,8 +9,14 @@ export const dynamic = "force-dynamic";
 const WINDOW_HOURS = 30; // a little over a day, so no session slips between two runs
 
 export async function GET(request: NextRequest) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret || request.headers.get("authorization") !== `Bearer ${secret}`) {
+  // Ignore stray spaces or quotes that sometimes come along when a value is pasted.
+  const secret = (process.env.CRON_SECRET ?? "").trim().replace(/^["']|["']$/g, "");
+  if (!secret) {
+    // A server mistake, not a wrong password: say so, so it is easy to find.
+    return new Response("CRON_SECRET is not set on this deployment", { status: 500 });
+  }
+  const sent = (request.headers.get("authorization") ?? "").trim();
+  if (sent !== `Bearer ${secret}`) {
     return new Response("Unauthorized", { status: 401 });
   }
 
