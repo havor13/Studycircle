@@ -251,3 +251,14 @@ model PasswordReset {
 
   @@index([userId, createdAt])
 }
+
+// NEW in step 21: one row per FAILED login, used to slow down password guessing.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+}
