@@ -51,6 +51,7 @@ model User {
   createdEvents      StudyEvent[] // NEW in step 13
   eventRsvps         EventRsvp[] // NEW in step 13
   sentInvites        InviteEmail[] // NEW in step 17
+  passwordResets     PasswordReset[] // NEW in step 20
 }
 
 model Group {
@@ -234,4 +235,19 @@ model InviteEmail {
 
   @@index([groupId, createdAt])
   @@index([invitedById, createdAt])
+}
+
+// NEW in step 20: one row per "forgot password" link. Only a hash of the link's secret is stored,
+// so a leaked database cannot be used to reset anyone's password.
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
 }
