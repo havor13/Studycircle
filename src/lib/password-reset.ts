@@ -2,7 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 
 /** Pure helpers for "forgot password". No database, no mail. */
 
-export const RESET_LINK_MINUTES = 60;
+export const RESET_LINK_MINUTES = 15;
 export const MAX_RESET_REQUESTS_PER_HOUR = 3; // per account, so nobody can flood an inbox
 
 /** A long random secret for the link. Only its hash is ever stored. */
