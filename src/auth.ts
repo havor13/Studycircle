@@ -30,19 +30,25 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
     ...authConfig.callbacks,
-    // Runs on the server (not the edge), so it can ask the database whether the
-    // account still exists. Returning null ends the session for a deleted user.
+    // Runs on the server (not the edge), so it can ask the database whether the account still exists
+    // and whether this device was logged out everywhere. Returning null ends the session.
     async jwt({ token, user }) {
+      // Just logged in: remember which "login generation" this device belongs to.
       if (user?.id) {
+        const row = await db.user.findUnique({ where: { id: user.id }, select: { tokenVersion: true } });
         token.id = user.id;
+        token.v = row?.tokenVersion ?? 0;
         return token;
       }
       if (!token.id) return null;
-      const exists = await db.user.findUnique({
+      const row = await db.user.findUnique({
         where: { id: token.id as string },
-        select: { id: true },
+        select: { tokenVersion: true },
       });
-      return exists ? token : null;
+      if (!row) return null; // account deleted
+      // Cookies made before this feature have no number: treat them as generation 0.
+      if (((token.v as number | undefined) ?? 0) !== row.tokenVersion) return null; // logged out everywhere
+      return token;
     },
   },
   providers: [

@@ -39,6 +39,7 @@ model User {
   bio          String?
   createdAt    DateTime @default(now())
   emailNotifications Boolean @default(true) // NEW in step 15
+  tokenVersion       Int     @default(0) // NEW in step 23: raising it logs the account out on every device
 
   memberships        Membership[]
   posts              Post[]

@@ -1,7 +1,7 @@
 "use server";
 
 import bcrypt from "bcryptjs";
-import { auth } from "@/auth";
+import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { appUrl, mailConfigured, sendMail } from "@/lib/mailer";
 import { changePasswordSchema, type FormState } from "@/lib/validations";
@@ -78,4 +78,12 @@ export async function sendTestEmail(): Promise<SettingResult> {
   return result.ok
     ? { ok: true, message: `Test email sent to ${user.email}. Check your inbox and spam folder.` }
     : { ok: false, message: result.error };
+}
+
+/** Logs this account out on EVERY device, including this one, then sends the person to the login page. */
+export async function logoutEverywhere() {
+  const session = await auth();
+  if (!session?.user?.id) return;
+  await db.user.update({ where: { id: session.user.id }, data: { tokenVersion: { increment: 1 } } });
+  await signOut({ redirectTo: "/login" });
 }

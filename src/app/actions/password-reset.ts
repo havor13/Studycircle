@@ -106,7 +106,8 @@ export async function resetPassword(token: string, _prev: ResetState, formData: 
 
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
   await db.$transaction([
-    db.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+    // Raising tokenVersion logs the account out everywhere: whoever was in with the old password is out.
+    db.user.update({ where: { id: row.userId }, data: { passwordHash, tokenVersion: { increment: 1 } } }),
     // This link is spent, and so is every other link that person had.
     db.passwordReset.deleteMany({ where: { userId: row.userId } }),
   ]);
