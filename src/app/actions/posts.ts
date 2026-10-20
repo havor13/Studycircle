@@ -69,3 +69,27 @@ export async function deletePost(postId: string) {
   await db.post.delete({ where: { id: post.id } });
   revalidatePath(`/groups/${slug}`);
 }
+
+export type PostEditState = FormState & { done?: boolean };
+
+/** Only the author can change the words of a post. Moderators can still delete or pin it. */
+export async function updatePost(
+  postId: string,
+  _prev: PostEditState,
+  formData: FormData,
+): Promise<PostEditState> {
+  const post = await db.post.findUnique({ where: { id: postId } });
+  if (!post) return { error: "That post no longer exists." };
+
+  const { userId, slug } = await requireMember(post.groupId);
+  if (post.authorId !== userId) return { error: "Only the author can edit a post." };
+
+  const parsed = postSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+
+  if (parsed.data.body !== post.body) {
+    await db.post.update({ where: { id: post.id }, data: { body: parsed.data.body, editedAt: new Date() } });
+    revalidatePath(`/groups/${slug}`);
+  }
+  return { done: true };
+}

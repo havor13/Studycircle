@@ -10,10 +10,12 @@ import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
+import { EventEditForm } from "@/components/event-edit-form";
 import { EventForm } from "@/components/event-form";
 import { InviteEmailForm } from "@/components/invite-email-form";
 import { InviteLink } from "@/components/invite-link";
 import { LocalTime } from "@/components/local-time";
+import { PostBody } from "@/components/post-body";
 import { PostForm } from "@/components/post-form";
 import { ResourceForm } from "@/components/resource-form";
 import { FileUploadForm } from "@/components/file-upload-form";
@@ -164,7 +166,7 @@ export default async function GroupPage({
                         )}
                       </div>
                     </div>
-                    <p className="mt-3 whitespace-pre-wrap">{post.body}</p>
+                    <PostBody postId={post.id} body={post.body} canEdit={mine} edited={Boolean(post.editedAt)} />
 
                     {/* Reactions */}
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -259,6 +261,21 @@ export default async function GroupPage({
                           </form>
                         )}
                       </div>
+                      {(ev.creatorId === userId || moderator) && (
+                        <details className="mt-1">
+                          <summary className="cursor-pointer text-xs font-semibold text-muted hover:text-brand">
+                            Edit
+                          </summary>
+                          <EventEditForm
+                            eventId={ev.id}
+                            title={ev.title}
+                            startsAtIso={ev.startsAt.toISOString()}
+                            durationMinutes={ev.durationMinutes}
+                            location={ev.location}
+                            notes={ev.notes}
+                          />
+                        </details>
+                      )}
                     </li>
                   );
                 })}

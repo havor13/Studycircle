@@ -99,6 +99,7 @@ model Post {
   pinned    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  editedAt  DateTime? // NEW in step 22: set only when the author edits the text
 
   group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
   author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)

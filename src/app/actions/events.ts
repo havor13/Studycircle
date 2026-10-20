@@ -109,3 +109,72 @@ export async function deleteEvent(eventId: string) {
   await db.studyEvent.delete({ where: { id: event.id } });
   revalidatePath(`/groups/${slug}`);
 }
+
+/** The organiser (or an admin) can fix the details. People who are going are told if the time, length or place changes. */
+export async function updateEvent(
+  eventId: string,
+  _prev: EventFormState,
+  formData: FormData,
+): Promise<EventFormState> {
+  const event = await db.studyEvent.findUnique({
+    where: { id: eventId },
+    include: { rsvps: { select: { userId: true } } },
+  });
+  if (!event) return { error: "That session no longer exists." };
+
+  const { userId, userName, groupName, slug, membership } = await requireMember(event.groupId);
+  if (event.creatorId !== userId && !canModerate(membership.role)) {
+    return { error: "Only the organiser or an admin can edit a session." };
+  }
+
+  const parsed = eventSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+  const { title, durationMinutes, location, notes } = parsed.data;
+  const startsAt = new Date(parsed.data.startsAt);
+
+  const timeChanged = startsAt.getTime() !== event.startsAt.getTime();
+  if (timeChanged) {
+    const now = Date.now();
+    if (startsAt.getTime() < now - 5 * 60 * 1000) {
+      return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
+    }
+    if (startsAt.getTime() > now + 366 * 24 * 60 * 60 * 1000) {
+      return { fieldErrors: { startsAt: ["Pick a date within the next year."] } };
+    }
+  }
+
+  const newLocation = location || null;
+  const logisticsChanged =
+    timeChanged || durationMinutes !== event.durationMinutes || newLocation !== (event.location ?? null);
+
+  await db.studyEvent.update({
+    where: { id: event.id },
+    data: {
+      title,
+      startsAt,
+      durationMinutes,
+      location: newLocation,
+      notes: notes || null,
+      // A new time needs a fresh reminder.
+      ...(timeChanged ? { reminderSentAt: null } : {}),
+    },
+  });
+
+  if (logisticsChanged) {
+    await notify(
+      event.rsvps
+        .filter((r) => r.userId !== userId)
+        .map((r) => ({
+          userId: r.userId,
+          actorId: userId,
+          groupId: event.groupId,
+          kind: "NEW_EVENT" as const,
+          message: `${userName} changed the details of "${title}" in ${groupName}. Check the new time and place.`,
+          link: `/groups/${slug}`,
+        })),
+    );
+  }
+
+  revalidatePath(`/groups/${slug}`);
+  return { done: true };
+}
