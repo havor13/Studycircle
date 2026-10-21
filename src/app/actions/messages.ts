@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { del } from "@vercel/blob";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { canModerate, requireMember } from "@/lib/permissions";
@@ -18,7 +19,7 @@ export async function sendMessage(
 ): Promise<FormState> {
   const { userId, slug } = await requireMember(groupId);
 
-  const parsed = messageSchema.safeParse(Object.fromEntries(formData));
+  const parsed = messageSchema.safeParse({ body: formData.get("body") ?? "" });
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
@@ -41,6 +42,13 @@ export async function deleteMessage(messageId: string) {
   if (!allowed) return;
 
   await db.message.delete({ where: { id: message.id } });
+  if (message.attachmentPath) {
+    try {
+      await del(message.attachmentPath);
+    } catch (error) {
+      console.error("Could not delete a chat attachment", error);
+    }
+  }
   revalidatePath(`/groups/${slug}/chat`);
   await pingChat(message.groupId);
 }

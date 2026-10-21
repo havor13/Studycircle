@@ -36,8 +36,9 @@ export async function deleteGroup(groupId: string, _prev: DeleteState, formData:
   }
 
   const files = await db.resource.findMany({ where: { groupId, kind: "FILE" }, select: { url: true } });
+  const chatFiles = await db.message.findMany({ where: { groupId, attachmentPath: { not: null } }, select: { attachmentPath: true } });
   await db.group.delete({ where: { id: groupId } }); // posts, chat, sessions, resources, members go with it
-  await removeBlobs(files.map((f) => f.url));
+  await removeBlobs([...files.map((f) => f.url), ...chatFiles.map((m) => m.attachmentPath)]);
 
   redirect("/dashboard");
 }
@@ -94,11 +95,19 @@ export async function deleteAccount(_prev: DeleteState, formData: FormData): Pro
     select: { url: true },
   });
 
+  const chatFiles = await db.message.findMany({
+    where: {
+      attachmentPath: { not: null },
+      OR: [{ authorId: userId }, ...(aloneGroupIds.length ? [{ groupId: { in: aloneGroupIds } }] : [])],
+    },
+    select: { attachmentPath: true },
+  });
+
   await db.$transaction([
     db.group.deleteMany({ where: { id: { in: aloneGroupIds } } }),
     db.user.delete({ where: { id: userId } }), // everything else the person made goes with the account
   ]);
-  await removeBlobs([user.image, ...files.map((f) => f.url)]);
+  await removeBlobs([user.image, ...files.map((f) => f.url), ...chatFiles.map((m) => m.attachmentPath)]);
 
   await signOut({ redirectTo: "/" });
   return {};

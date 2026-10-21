@@ -9,6 +9,7 @@ import { Avatar } from "@/components/avatar";
 import { ChatForm } from "@/components/chat-form";
 import { ChatLog } from "@/components/chat-log";
 import { LocalTime } from "@/components/local-time";
+import { IMAGE_EXTENSIONS, extensionOf, formatBytes } from "@/lib/files";
 import { canModerate } from "@/lib/permissions";
 import { REACTION_EMOJIS } from "@/lib/reactions";
 
@@ -88,7 +89,32 @@ export default async function ChatPage({
                       <span className="mx-1">·</span>
                       <LocalTime iso={m.createdAt.toISOString()} />
                     </div>
-                    <p className="mt-0.5 whitespace-pre-wrap break-words">{m.body}</p>
+                    {m.body && <p className="mt-0.5 whitespace-pre-wrap break-words">{m.body}</p>}
+                    {m.attachmentPath &&
+                      (IMAGE_EXTENSIONS.has(extensionOf(m.attachmentPath)) ? (
+                        <a href={`/api/messages/${m.id}/file`} target="_blank" rel="noreferrer" className="mt-1 block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={`/api/messages/${m.id}/file`}
+                            alt={m.attachmentName ?? "Image"}
+                            loading="lazy"
+                            className="max-h-64 max-w-full rounded-lg"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={`/api/messages/${m.id}/file`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`mt-1 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold underline ${
+                            mine ? "border-white/50" : "border-line"
+                          }`}
+                        >
+                          <span aria-hidden>📄</span>
+                          {m.attachmentName ?? "Document"}
+                          {m.attachmentSize ? ` (${formatBytes(m.attachmentSize)})` : ""}
+                        </a>
+                      ))}
 
                     {/* Reactions: pills for emoji already used, plus a picker for the rest */}
                     <div className="mt-1 flex flex-wrap items-start gap-1">
