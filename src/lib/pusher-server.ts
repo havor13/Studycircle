@@ -30,3 +30,15 @@ export async function pingChat(groupId: string) {
     console.error("Pusher trigger failed", error);
   }
 }
+
+export const userChannel = (userId: string) => `private-user-${userId}`;
+
+/** Tells one person's open pages (inbox, private chat) to reload. Carries no message text. */
+export async function pingUser(userId: string) {
+  if (!pusher) return;
+  try {
+    await pusher.trigger(userChannel(userId), "update", {});
+  } catch (error) {
+    console.error("Pusher trigger failed", error);
+  }
+}

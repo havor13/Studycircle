@@ -19,6 +19,13 @@ export async function POST(request: Request) {
   const socketId = String(form.get("socket_id") ?? "");
   const channel = String(form.get("channel_name") ?? "");
 
+  // Your own private-message channel: only you may listen to it.
+  const mine = /^private-user-([A-Za-z0-9_-]+)$/.exec(channel);
+  if (socketId && mine) {
+    if (mine[1] !== session.user.id) return new NextResponse("Forbidden", { status: 403 });
+    return NextResponse.json(pusher.authorizeChannel(socketId, channel));
+  }
+
   const match = /^private-circle-([A-Za-z0-9_-]+)$/.exec(channel);
   if (!socketId || !match) return new NextResponse("Bad request", { status: 400 });
 

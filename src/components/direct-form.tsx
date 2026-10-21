@@ -1,0 +1,44 @@
+"use client";
+
+import { useActionState, useRef } from "react";
+import { sendDirectMessage } from "@/app/actions/direct";
+
+export function DirectForm({ otherId }: { otherId: string }) {
+  const [state, action, pending] = useActionState(sendDirectMessage.bind(null, otherId), {});
+  const formRef = useRef<HTMLFormElement>(null);
+
+  return (
+    <form ref={formRef} action={action} className="mt-3">
+      <label htmlFor="dm-body" className="sr-only">
+        Private message
+      </label>
+      <div className="flex items-end gap-2">
+        <textarea
+          id="dm-body"
+          name="body"
+          rows={2}
+          placeholder="Write a private message… (Enter to send, Shift+Enter for a new line)"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              formRef.current?.requestSubmit();
+            }
+          }}
+          className="flex-1 resize-none rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand"
+        />
+        <button
+          disabled={pending}
+          className="rounded-lg bg-brand px-4 py-2 font-semibold text-white hover:bg-brand-dark disabled:opacity-60"
+        >
+          {pending ? "Sending…" : "Send"}
+        </button>
+      </div>
+      {state.fieldErrors?.body && <p className="mt-1 text-sm text-red-600">{state.fieldErrors.body[0]}</p>}
+      {state.error && (
+        <p role="alert" className="mt-1 text-sm text-red-600">
+          {state.error}
+        </p>
+      )}
+    </form>
+  );
+}

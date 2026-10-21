@@ -10,8 +10,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const session = await auth();
   if (!session?.user) redirect("/login");
 
-  const [unread, me] = await Promise.all([
+  const [unread, unreadDm, me] = await Promise.all([
     db.notification.count({ where: { userId: session.user.id, readAt: null } }),
+    db.directMessage.count({ where: { recipientId: session.user.id, readAt: null } }),
     db.user.findUnique({ where: { id: session.user.id }, select: { image: true } }),
   ]);
 
@@ -27,6 +28,18 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
+            <Link
+              href="/messages"
+              aria-label={unreadDm > 0 ? `Private messages, ${unreadDm} unread` : "Private messages"}
+              className="relative rounded-lg border border-line px-3 py-1.5 hover:border-brand"
+            >
+              <span aria-hidden="true">✉️</span>
+              {unreadDm > 0 && (
+                <span className="absolute -right-2 -top-2 min-w-5 rounded-full bg-brand px-1.5 text-center text-xs font-bold text-white">
+                  {unreadDm > 99 ? "99+" : unreadDm}
+                </span>
+              )}
+            </Link>
             <Link
               href="/notifications"
               aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}

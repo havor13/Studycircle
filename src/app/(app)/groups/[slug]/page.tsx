@@ -438,7 +438,14 @@ export default async function GroupPage({
                           {m.userId === userId && <span className="text-muted"> (you)</span>}
                         </span>
                       </span>
-                      <span className="text-xs text-muted">{m.role.toLowerCase()}</span>
+                      <span className="flex items-center gap-2 text-xs text-muted">
+                        {m.userId !== userId && (
+                          <Link href={`/messages/${m.userId}`} className="font-semibold text-brand hover:underline">
+                            Message
+                          </Link>
+                        )}
+                        {m.role.toLowerCase()}
+                      </span>
                     </div>
                     {(options.length > 0 || removable) && m.userId !== userId && (
                       <div className="mt-1 flex items-center gap-2">

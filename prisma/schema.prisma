@@ -53,6 +53,8 @@ model User {
   eventRsvps         EventRsvp[] // NEW in step 13
   sentInvites        InviteEmail[] // NEW in step 17
   passwordResets     PasswordReset[] // NEW in step 20
+  dmSent     DirectMessage[] @relation("DmSent")
+  dmReceived DirectMessage[] @relation("DmReceived")
 }
 
 model Group {
@@ -268,4 +270,20 @@ model LoginAttempt {
 
   @@index([email, createdAt])
   @@index([ip, createdAt])
+}
+
+// Private one-to-one messages between two people who share a circle.
+model DirectMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  recipientId String
+  body        String
+  createdAt   DateTime  @default(now())
+  readAt      DateTime?
+
+  sender    User @relation("DmSent", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("DmReceived", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([senderId, recipientId, createdAt])
+  @@index([recipientId, readAt])
 }
