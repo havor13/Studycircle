@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { Avatar } from "@/components/avatar";
 import { AvatarForm } from "@/components/avatar-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { DeleteAccountForm } from "@/components/delete-account-form";
 import { EmailSettings } from "@/components/email-settings";
 import { logoutEverywhere } from "@/app/actions/account";
 import { mailConfigured } from "@/lib/mailer";
@@ -65,6 +66,13 @@ export default async function AccountPage() {
             Log out everywhere
           </button>
         </form>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-red-200 bg-surface p-5">
+        <details>
+          <summary className="cursor-pointer font-display text-lg font-bold text-red-600">Delete account</summary>
+          <DeleteAccountForm />
+        </details>
       </section>
     </div>
   );

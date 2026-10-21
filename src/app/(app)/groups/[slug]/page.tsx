@@ -10,6 +10,7 @@ import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
+import { DeleteCircleForm } from "@/components/delete-circle-form";
 import { EventEditForm } from "@/components/event-edit-form";
 import { EventForm } from "@/components/event-form";
 import { InviteEmailForm } from "@/components/invite-email-form";
@@ -469,6 +470,12 @@ export default async function GroupPage({
             <p className="text-xs text-muted">
               The owner cannot leave. To step down, make another member the owner first.
             </p>
+          )}
+          {myRole === "OWNER" && (
+            <details className="rounded-2xl border border-line bg-surface p-4">
+              <summary className="cursor-pointer text-sm font-semibold text-red-600">Delete this circle</summary>
+              <DeleteCircleForm groupId={group.id} groupName={group.name} />
+            </details>
           )}
         </aside>
       </div>
