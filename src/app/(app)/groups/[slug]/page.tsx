@@ -33,14 +33,22 @@ import { REACTION_EMOJIS } from "@/lib/reactions";
 
 export default async function GroupPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ q?: string; n?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const { slug } = await params;
+  const sp = await searchParams;
+  const q = (typeof sp.q === "string" ? sp.q : "").trim().slice(0, 100);
+  const asked = Number.parseInt(typeof sp.n === "string" ? sp.n : "", 10);
+  const shown = Number.isFinite(asked) ? Math.min(Math.max(asked, 20), 200) : 20;
+  const moreLink = (n: number) =>
+    `/groups/${slug}?${new URLSearchParams({ ...(q ? { q } : {}), n: String(n) }).toString()}`;
   const group = await db.group.findUnique({ where: { slug } });
   if (!group) notFound();
 
@@ -49,15 +57,18 @@ export default async function GroupPage({
   });
   if (!membership) notFound(); // hides circles you are not a member of
 
-  const [posts, members, resources, events] = await Promise.all([
+  const [allPosts, members, resources, events] = await Promise.all([
     db.post.findMany({
-      where: { groupId: group.id },
+      where: {
+        groupId: group.id,
+        ...(q ? { body: { contains: q, mode: "insensitive" as const } } : {}),
+      },
       include: {
         author: { select: { name: true, image: true } },
         reactions: { select: { emoji: true, userId: true } },
       },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
-      take: 50,
+      take: shown + 1, // one extra row tells us whether there is more
     }),
     db.membership.findMany({
       where: { groupId: group.id },
@@ -80,6 +91,8 @@ export default async function GroupPage({
       take: 10,
     }),
   ]);
+  const hasMore = allPosts.length > shown;
+  const posts = allPosts.slice(0, shown);
   members.sort(
     (a, b) => ROLE_RANK[b.role] - ROLE_RANK[a.role] || a.user.name.localeCompare(b.user.name),
   );
@@ -124,9 +137,31 @@ export default async function GroupPage({
         <section className="space-y-4">
           <PostForm groupId={group.id} />
 
+          <form action={`/groups/${group.slug}`} method="get" role="search" className="flex gap-2">
+            <label htmlFor="post-search" className="sr-only">
+              Search posts
+            </label>
+            <input
+              id="post-search"
+              name="q"
+              defaultValue={q}
+              maxLength={100}
+              placeholder="Search posts"
+              className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-3 py-1.5 text-sm outline-none focus:border-brand"
+            />
+            <button className="rounded-lg border border-line bg-surface px-3 py-1.5 text-sm font-semibold hover:border-brand">
+              Search
+            </button>
+            {q && (
+              <Link href={`/groups/${group.slug}`} className="self-center text-sm text-muted underline">
+                Clear
+              </Link>
+            )}
+          </form>
+
           {posts.length === 0 ? (
             <p className="rounded-2xl border border-dashed border-line bg-surface p-8 text-center text-muted">
-              No posts yet. Start the conversation.
+              {q ? `No posts match "${q}".` : "No posts yet. Start the conversation."}
             </p>
           ) : (
             <ul className="space-y-4">
@@ -198,6 +233,14 @@ export default async function GroupPage({
                 );
               })}
             </ul>
+          )}
+          {hasMore && (
+            <Link
+              href={moreLink(shown + 20)}
+              className="block rounded-lg border border-line bg-surface px-3 py-2 text-center text-sm font-semibold hover:border-brand"
+            >
+              Show older posts
+            </Link>
           )}
         </section>
 
