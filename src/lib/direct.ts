@@ -14,3 +14,15 @@ export async function sharesCircle(a: string, b: string) {
   });
   return common !== null;
 }
+
+/** Who blocked whom between two people (either direction). */
+export async function blockState(me: string, other: string) {
+  const rows = await db.userBlock.findMany({
+    where: { OR: [{ blockerId: me, blockedId: other }, { blockerId: other, blockedId: me }] },
+    select: { blockerId: true },
+  });
+  return {
+    iBlocked: rows.some((r) => r.blockerId === me),
+    blockedMe: rows.some((r) => r.blockerId === other),
+  };
+}

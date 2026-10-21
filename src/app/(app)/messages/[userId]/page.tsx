@@ -2,14 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { deleteDirectMessage } from "@/app/actions/direct";
+import { blockUser, deleteDirectMessage, unblockUser } from "@/app/actions/direct";
 import { Avatar } from "@/components/avatar";
 import { DirectForm } from "@/components/direct-form";
 import { LiveRefresh } from "@/components/live-refresh";
 import { LocalTime } from "@/components/local-time";
 import { ScrollBox } from "@/components/scroll-box";
 import { db } from "@/lib/db";
-import { sharesCircle } from "@/lib/direct";
+import { blockState, sharesCircle } from "@/lib/direct";
 
 export const metadata: Metadata = { title: "Private chat" };
 
@@ -30,12 +30,14 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
       { senderId: otherId, recipientId: me },
     ],
   };
-  const [canSend, history] = await Promise.all([
+  const [shares, history, blocks] = await Promise.all([
     sharesCircle(me, otherId),
     db.directMessage.count({ where: pairWhere }),
+    blockState(me, otherId),
   ]);
+  const canSend = shares && !blocks.iBlocked && !blocks.blockedMe;
   // Strangers get a 404; an old conversation stays readable even after you stop sharing a circle.
-  if (!canSend && history === 0) notFound();
+  if (!shares && history === 0) notFound();
 
   const recent = await db.directMessage.findMany({
     where: pairWhere,
@@ -94,11 +96,36 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
 
       {canSend ? (
         <DirectForm otherId={other.id} />
+      ) : blocks.iBlocked ? (
+        <p className="mt-3 text-sm text-muted">You blocked {other.name}. They cannot message you, and you cannot message them.</p>
+      ) : blocks.blockedMe ? (
+        <p className="mt-3 text-sm text-muted">You can&rsquo;t send messages to {other.name} right now.</p>
       ) : (
         <p className="mt-3 text-sm text-muted">
           You no longer share a circle with {other.name}, so you cannot send new messages.
         </p>
       )}
+
+      <div className="mt-4 text-sm">
+        {blocks.iBlocked ? (
+          <form action={unblockUser.bind(null, other.id)}>
+            <button className="font-semibold text-brand underline">Unblock {other.name}</button>
+          </form>
+        ) : (
+          <details>
+            <summary className="cursor-pointer text-muted hover:text-red-600">Block {other.name}</summary>
+            <form action={blockUser.bind(null, other.id)} className="mt-2 space-y-2">
+              <p className="text-muted">
+                Neither of you will be able to send private messages to the other until you unblock. Circles are not
+                affected.
+              </p>
+              <button className="rounded-lg bg-red-600 px-3 py-1.5 font-semibold text-white hover:bg-red-700">
+                Block {other.name}
+              </button>
+            </form>
+          </details>
+        )}
+      </div>
     </div>
   );
 }
