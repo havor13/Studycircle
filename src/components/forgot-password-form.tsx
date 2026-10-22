@@ -37,9 +37,15 @@ export function ForgotPasswordForm() {
           autoComplete="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          aria-invalid={state.fieldErrors?.email ? true : undefined}
+          aria-describedby={state.fieldErrors?.email ? "email-error" : undefined}
           className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand"
         />
-        {state.fieldErrors?.email && <p className="mt-1 text-sm text-red-600">{state.fieldErrors.email[0]}</p>}
+        {state.fieldErrors?.email && (
+          <p id="email-error" role="alert" className="mt-1 text-sm text-red-600">
+            {state.fieldErrors.email[0]}
+          </p>
+        )}
       </div>
       {state.error && (
         <p role="alert" className="text-sm text-red-600">

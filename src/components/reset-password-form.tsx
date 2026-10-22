@@ -35,10 +35,14 @@ export function ResetPasswordForm({ token }: { token: string }) {
             name={f.name}
             type="password"
             autoComplete="new-password"
+            aria-invalid={state.fieldErrors?.[f.name] ? true : undefined}
+            aria-describedby={state.fieldErrors?.[f.name] ? `${f.name}-error` : undefined}
             className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 outline-none focus:border-brand"
           />
           {state.fieldErrors?.[f.name] && (
-            <p className="mt-1 text-sm text-red-600">{state.fieldErrors[f.name]![0]}</p>
+            <p id={`${f.name}-error`} role="alert" className="mt-1 text-sm text-red-600">
+              {state.fieldErrors[f.name]![0]}
+            </p>
           )}
         </div>
       ))}

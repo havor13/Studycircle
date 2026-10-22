@@ -20,7 +20,9 @@ export function ScrollBox({ count, children }: { count: number; children: React.
         if (box) nearBottom.current = box.scrollHeight - box.scrollTop - box.clientHeight < 80;
       }}
       className="h-[55vh] overflow-y-auto rounded-2xl border border-line bg-surface p-4"
-      aria-live="polite"
+      role="log"
+      aria-label="Messages"
+      tabIndex={0}
     >
       {children}
     </div>

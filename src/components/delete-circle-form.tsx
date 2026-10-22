@@ -20,10 +20,12 @@ export function DeleteCircleForm({ groupId, groupName }: { groupId: string; grou
           id="dc-confirm"
           name="confirm"
           autoComplete="off"
+          aria-invalid={state.fieldErrors?.confirm ? true : undefined}
+          aria-describedby={state.fieldErrors?.confirm ? "dc-confirm-error" : undefined}
           placeholder={groupName}
           className="mt-1 w-full rounded-lg border border-line bg-transparent px-3 py-1.5 outline-none focus:border-red-600"
         />
-        {state.fieldErrors?.confirm && <p className="mt-1 text-xs text-red-600">{state.fieldErrors.confirm[0]}</p>}
+        {state.fieldErrors?.confirm && <p id="dc-confirm-error" role="alert" className="mt-1 text-xs text-red-600">{state.fieldErrors.confirm[0]}</p>}
       </div>
       {state.error && (
         <p role="alert" className="text-xs text-red-600">

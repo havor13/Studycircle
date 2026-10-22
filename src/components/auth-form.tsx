@@ -19,6 +19,12 @@ export function AuthForm({ mode, redirectTo }: Props) {
   // Keep the destination when switching between the login and register pages.
   const query = redirectTo ? `?redirectTo=${encodeURIComponent(redirectTo)}` : "";
 
+  // Props that tie a field to its error message for screen readers.
+  const errorProps = (name: "name" | "email" | "password") =>
+    state.fieldErrors?.[name]
+      ? { "aria-invalid": true as const, "aria-describedby": `${name}-error` }
+      : {};
+
   return (
     <form action={action} className="space-y-4" noValidate>
       <input type="hidden" name="redirectTo" value={redirectTo ?? ""} />
@@ -32,18 +38,18 @@ export function AuthForm({ mode, redirectTo }: Props) {
       {isRegister && (
         <div>
           <label htmlFor="name" className="block text-sm font-semibold">Name</label>
-          <input id="name" name="name" autoComplete="name" className={inputClass} />
+          <input id="name" name="name" autoComplete="name" className={inputClass} {...errorProps("name")} />
           {state.fieldErrors?.name && (
-            <p className="mt-1 text-sm text-red-600">{state.fieldErrors.name[0]}</p>
+            <p id="name-error" role="alert" className="mt-1 text-sm text-red-600">{state.fieldErrors.name[0]}</p>
           )}
         </div>
       )}
 
       <div>
         <label htmlFor="email" className="block text-sm font-semibold">Email</label>
-        <input id="email" name="email" type="email" autoComplete="email" className={inputClass} />
+        <input id="email" name="email" type="email" autoComplete="email" className={inputClass} {...errorProps("email")} />
         {state.fieldErrors?.email && (
-          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.email[0]}</p>
+          <p id="email-error" role="alert" className="mt-1 text-sm text-red-600">{state.fieldErrors.email[0]}</p>
         )}
       </div>
 
@@ -55,9 +61,10 @@ export function AuthForm({ mode, redirectTo }: Props) {
           type="password"
           autoComplete={isRegister ? "new-password" : "current-password"}
           className={inputClass}
+          {...errorProps("password")}
         />
         {state.fieldErrors?.password && (
-          <p className="mt-1 text-sm text-red-600">{state.fieldErrors.password[0]}</p>
+          <p id="password-error" role="alert" className="mt-1 text-sm text-red-600">{state.fieldErrors.password[0]}</p>
         )}
       </div>
 

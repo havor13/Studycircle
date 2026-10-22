@@ -86,7 +86,9 @@ export function ChatLog({
       ref={boxRef}
       onScroll={onScroll}
       className="h-[55vh] overflow-y-auto rounded-2xl border border-line bg-surface p-4"
-      aria-live="polite"
+      role="log"
+      aria-label="Messages"
+      tabIndex={0}
     >
       {children}
     </div>

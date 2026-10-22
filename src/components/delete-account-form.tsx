@@ -20,15 +20,30 @@ export function DeleteAccountForm() {
         <label htmlFor="da-password" className="block text-xs font-semibold">
           Your password
         </label>
-        <input id="da-password" name="password" type="password" autoComplete="current-password" className={inputClass} />
-        {state.fieldErrors?.password && <p className="mt-1 text-xs text-red-600">{state.fieldErrors.password[0]}</p>}
+        <input
+          id="da-password"
+          name="password"
+          type="password"
+          autoComplete="current-password"
+          aria-invalid={state.fieldErrors?.password ? true : undefined}
+          aria-describedby={state.fieldErrors?.password ? "da-password-error" : undefined}
+          className={inputClass}
+        />
+        {state.fieldErrors?.password && <p id="da-password-error" role="alert" className="mt-1 text-xs text-red-600">{state.fieldErrors.password[0]}</p>}
       </div>
       <div>
         <label htmlFor="da-confirm" className="block text-xs font-semibold">
           Type DELETE to confirm
         </label>
-        <input id="da-confirm" name="confirm" autoComplete="off" className={inputClass} />
-        {state.fieldErrors?.confirm && <p className="mt-1 text-xs text-red-600">{state.fieldErrors.confirm[0]}</p>}
+        <input
+          id="da-confirm"
+          name="confirm"
+          autoComplete="off"
+          aria-invalid={state.fieldErrors?.confirm ? true : undefined}
+          aria-describedby={state.fieldErrors?.confirm ? "da-confirm-error" : undefined}
+          className={inputClass}
+        />
+        {state.fieldErrors?.confirm && <p id="da-confirm-error" role="alert" className="mt-1 text-xs text-red-600">{state.fieldErrors.confirm[0]}</p>}
       </div>
       {state.error && (
         <p role="alert" className="text-xs text-red-600">

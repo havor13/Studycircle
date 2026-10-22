@@ -9,6 +9,12 @@
   --muted: #6b675e;
   --brand: #2f6f5e;
   --brand-dark: #245547;
+
+  /* Accessibility (step 30): checked against WCAG AA contrast */
+  --brand-fill: #2f6f5e; /* behind white text on buttons: 5.9:1 */
+  --brand-fill-hover: #245547; /* 8.5:1 */
+  --field-border: #8a867c; /* input outlines need 3:1 against the page: 3.4 to 3.6 */
+  --danger: #b91c1c; /* red text: 6.5:1 on white */
 }
 
 @media (prefers-color-scheme: dark) {
@@ -18,8 +24,13 @@
     --surface: #1d1c19;
     --line: #34322c;
     --muted: #a19d92;
-    --brand: #4a9a84;
+    --brand: #55a590; /* brand-coloured text and borders on dark: 5.8 to 6.3:1 */
     --brand-dark: #3b8470;
+
+    --brand-fill: #2f6f5e; /* white text on buttons stays 5.9:1 (the old dark green gave 3.4:1) */
+    --brand-fill-hover: #245547;
+    --field-border: #77746a; /* 3.6 to 3.9:1 */
+    --danger: #f87171; /* red text on dark: 6.2:1 */
   }
 }
 
@@ -39,4 +50,84 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* ---------- Accessibility (step 30) ---------- */
+/* The rules below are outside Tailwind's layers on purpose, so they win over utility classes. */
+
+/* Buttons and badges filled with the brand colour use the darker fill so white text is readable in both themes. */
+.bg-brand {
+  background-color: var(--brand-fill);
+}
+@media (hover: hover) {
+  .hover\:bg-brand-dark:hover {
+    background-color: var(--brand-fill-hover);
+  }
+}
+
+/* Red error and warning text: readable on light and on dark. */
+.text-red-600 {
+  color: var(--danger);
+}
+.hover\:text-red-600:hover {
+  color: var(--danger);
+}
+
+/* Small light text on a brand-coloured chat bubble: a little brighter so it passes 4.5:1. */
+.text-white\/80 {
+  color: rgb(255 255 255 / 0.92);
+}
+
+/* Visible keyboard focus on everything you can tab to (links, buttons, fields, summaries). */
+:focus-visible {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+main:focus {
+  outline: none;
+}
+
+/* Form fields get a border you can actually see. */
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+textarea,
+select {
+  border-color: var(--field-border);
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--brand-fill);
+}
+/* The visually hidden file picker (📎) shows its focus on its label. */
+input[type="file"].sr-only:focus-visible + *,
+label:has(+ input[type="file"].sr-only:focus-visible) {
+  outline: 3px solid var(--brand);
+  outline-offset: 2px;
+}
+
+/* "Skip to content": hidden until a keyboard user tabs to it. */
+.skip-link {
+  position: absolute;
+  left: 0.75rem;
+  top: -4rem;
+  z-index: 100;
+  border-radius: 0.5rem;
+  background: var(--brand-fill);
+  color: #fff;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+}
+.skip-link:focus {
+  top: 0.75rem;
+}
+
+/* People who ask their system for less motion get none. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

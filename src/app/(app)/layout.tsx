@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { logout } from "@/app/actions/auth";
 import { Avatar } from "@/components/avatar";
 import { Logo } from "@/components/logo";
+import { NavLink } from "@/components/nav-link";
 import { db } from "@/lib/db";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -18,18 +19,22 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="min-h-screen">
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
       <header className="border-b border-line bg-surface">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <div className="flex items-center gap-8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-y-3 px-4 py-4 sm:px-6">
+          <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
             <Logo href="/dashboard" />
-            <nav className="hidden gap-6 text-sm font-semibold sm:flex">
-              <Link href="/dashboard" className="hover:text-brand">Dashboard</Link>
-              <Link href="/discover" className="hover:text-brand">Find circles</Link>
+            <nav aria-label="Main" className="flex gap-4 text-sm font-semibold sm:gap-6">
+              <NavLink href="/dashboard" className="hover:text-brand">Dashboard</NavLink>
+              <NavLink href="/discover" className="hover:text-brand">Find circles</NavLink>
             </nav>
           </div>
           <div className="flex items-center gap-4 text-sm">
-            <Link
+            <NavLink
               href="/messages"
+              activeClassName="border-brand"
               aria-label={unreadDm > 0 ? `Private messages, ${unreadDm} unread` : "Private messages"}
               className="relative rounded-lg border border-line px-3 py-1.5 hover:border-brand"
             >
@@ -39,9 +44,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   {unreadDm > 99 ? "99+" : unreadDm}
                 </span>
               )}
-            </Link>
-            <Link
+            </NavLink>
+            <NavLink
               href="/notifications"
+              activeClassName="border-brand"
               aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
               className="relative rounded-lg border border-line px-3 py-1.5 hover:border-brand"
             >
@@ -51,7 +57,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
-            </Link>
+            </NavLink>
             <Link
               href="/account"
               aria-label="Your account"
@@ -68,7 +74,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
         </div>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-10">{children}</main>
+      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        {children}
+      </main>
     </div>
   );
 }
