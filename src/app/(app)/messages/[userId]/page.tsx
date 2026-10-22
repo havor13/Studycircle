@@ -15,12 +15,21 @@ import { REACTION_EMOJIS } from "@/lib/reactions";
 
 export const metadata: Metadata = { title: "Private chat" };
 
-export default async function DirectChatPage({ params }: { params: Promise<{ userId: string }> }) {
+export default async function DirectChatPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ userId: string }>;
+  searchParams: Promise<{ n?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const me = session.user.id;
 
   const { userId: otherId } = await params;
+  const sp = await searchParams;
+  const asked = Number.parseInt(typeof sp.n === "string" ? sp.n : "", 10);
+  const shown = Number.isFinite(asked) ? Math.min(Math.max(asked, 100), 1000) : 100;
   if (otherId === me) redirect("/messages");
 
   const other = await db.user.findUnique({ where: { id: otherId }, select: { id: true, name: true, image: true } });
@@ -45,9 +54,10 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
     where: pairWhere,
     include: { reactions: { select: { emoji: true, userId: true } } },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: shown + 1, // one extra row tells us whether there are older messages
   });
-  const messages = recent.reverse();
+  const hasMore = recent.length > shown;
+  const messages = recent.slice(0, shown).reverse();
 
   // Opening the conversation marks their messages as read.
   await db.directMessage.updateMany({
@@ -65,13 +75,24 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
         <Avatar userId={other.id} name={other.name} image={other.image} size={36} />
         {other.name}
       </h1>
-      <p className="mb-4 mt-1 text-sm text-muted">Private: only you and {other.name} can read this. Showing the latest 100.</p>
+      <p className="mb-4 mt-1 text-sm text-muted">Private: only you and {other.name} can read this. Showing the latest {messages.length}.</p>
 
-      <ScrollBox count={messages.length}>
+      <ScrollBox count={messages.length} firstId={messages[0]?.id}>
         {messages.length === 0 ? (
           <p className="py-10 text-center text-muted">No messages yet. Say hello.</p>
         ) : (
           <ul className="space-y-3">
+          {hasMore && (
+            <li className="text-center">
+              <Link
+                href={`/messages/${other.id}?n=${shown + 100}`}
+                scroll={false}
+                className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:border-brand"
+              >
+                Show older messages
+              </Link>
+            </li>
+          )}
             {messages.map((m) => {
               const mine = m.senderId === me;
               const summary = REACTION_EMOJIS.map((emoji) => {

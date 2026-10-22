@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useLayoutEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Pusher from "pusher-js";
 
@@ -15,15 +15,20 @@ const SLOW_EVERY = 8; // ...and one refresh in 8 ticks (about 30 seconds) as a s
 export function ChatLog({
   groupId,
   count,
+  firstId,
   children,
 }: {
   groupId: string;
   count: number;
+  firstId?: string;
   children: React.ReactNode;
 }) {
   const router = useRouter();
   const boxRef = useRef<HTMLDivElement>(null);
   const nearBottom = useRef(true);
+  const lastHeight = useRef(0);
+  const lastFirst = useRef(firstId);
+  const lastCount = useRef(count);
   const live = useRef(false);
 
   // Real-time: listen on this circle's private channel.
@@ -70,10 +75,19 @@ export function ChatLog({
   }, [router]);
 
   // Stay at the bottom, unless the reader scrolled up to read older messages.
-  useEffect(() => {
+  useLayoutEffect(() => {
     const box = boxRef.current;
-    if (box && nearBottom.current) box.scrollTop = box.scrollHeight;
-  }, [count]);
+    if (!box) return;
+    if (firstId !== lastFirst.current && count > lastCount.current && lastHeight.current > 0) {
+      // Older messages were added above: keep the reader on the message they were looking at.
+      box.scrollTop += box.scrollHeight - lastHeight.current;
+    } else if (nearBottom.current) {
+      box.scrollTop = box.scrollHeight;
+    }
+    lastFirst.current = firstId;
+    lastCount.current = count;
+    lastHeight.current = box.scrollHeight;
+  }, [count, firstId]);
 
   function onScroll() {
     const box = boxRef.current;

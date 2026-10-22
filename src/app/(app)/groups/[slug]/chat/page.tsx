@@ -17,14 +17,19 @@ export const metadata: Metadata = { title: "Chat" };
 
 export default async function ChatPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ n?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
   const userId = session.user.id;
 
   const { slug } = await params;
+  const sp = await searchParams;
+  const asked = Number.parseInt(typeof sp.n === "string" ? sp.n : "", 10);
+  const shown = Number.isFinite(asked) ? Math.min(Math.max(asked, 100), 1000) : 100;
   const group = await db.group.findUnique({ where: { slug } });
   if (!group) notFound();
 
@@ -41,9 +46,10 @@ export default async function ChatPage({
       reactions: { select: { emoji: true, userId: true } },
     },
     orderBy: { createdAt: "desc" },
-    take: 100,
+    take: shown + 1, // one extra row tells us whether there are older messages
   });
-  const messages = recent.reverse();
+  const hasMore = recent.length > shown;
+  const messages = recent.slice(0, shown).reverse();
   const moderator = canModerate(membership.role);
 
   return (
@@ -53,14 +59,25 @@ export default async function ChatPage({
       </Link>
       <h1 className="mt-2 font-display text-3xl font-bold">{group.name} chat</h1>
       <p className="mb-4 mt-1 text-sm text-muted">
-        New messages appear as they are sent. Showing the latest 100.
+        New messages appear as they are sent. Showing the latest {messages.length}.
       </p>
 
-      <ChatLog groupId={group.id} count={messages.length}>
+      <ChatLog groupId={group.id} count={messages.length} firstId={messages[0]?.id}>
         {messages.length === 0 ? (
           <p className="py-10 text-center text-muted">No messages yet. Say hello.</p>
         ) : (
           <ul className="space-y-3">
+          {hasMore && (
+            <li className="text-center">
+              <Link
+                href={`/groups/${group.slug}/chat?n=${shown + 100}`}
+                scroll={false}
+                className="inline-block rounded-lg border border-line px-3 py-1.5 text-sm font-semibold hover:border-brand"
+              >
+                Show older messages
+              </Link>
+            </li>
+          )}
             {messages.map((m) => {
               const mine = m.authorId === userId;
               const summary = REACTION_EMOJIS.map((emoji) => {
