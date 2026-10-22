@@ -132,6 +132,14 @@ export default async function GroupPage({
         >
           Progress
         </Link>
+        {manager && (
+          <Link
+            href={`/groups/${group.slug}/settings`}
+            className="inline-block rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand"
+          >
+            Settings
+          </Link>
+        )}
         {moderator && (
           <Link
             href={`/groups/${group.slug}/reports`}
