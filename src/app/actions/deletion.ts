@@ -103,11 +103,17 @@ export async function deleteAccount(_prev: DeleteState, formData: FormData): Pro
     select: { attachmentPath: true },
   });
 
+  // Private messages go with the account (for both people), so their files must go too.
+  const privateFiles = await db.directMessage.findMany({
+    where: { attachmentPath: { not: null }, OR: [{ senderId: userId }, { recipientId: userId }] },
+    select: { attachmentPath: true },
+  });
+
   await db.$transaction([
     db.group.deleteMany({ where: { id: { in: aloneGroupIds } } }),
     db.user.delete({ where: { id: userId } }), // everything else the person made goes with the account
   ]);
-  await removeBlobs([user.image, ...files.map((f) => f.url), ...chatFiles.map((m) => m.attachmentPath)]);
+  await removeBlobs([user.image, ...files.map((f) => f.url), ...chatFiles.map((m) => m.attachmentPath), ...privateFiles.map((m) => m.attachmentPath)]);
 
   await signOut({ redirectTo: "/" });
   return {};

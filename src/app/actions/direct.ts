@@ -2,11 +2,13 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { del } from "@vercel/blob";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { MAX_DM_LENGTH, MAX_DM_PER_MINUTE, blockState, sharesCircle } from "@/lib/direct";
 import { pingUser } from "@/lib/pusher-server";
+import { REACTION_EMOJIS } from "@/lib/reactions";
 import type { FormState } from "@/lib/validations";
 
 const bodySchema = z.object({
@@ -49,6 +51,13 @@ export async function deleteDirectMessage(messageId: string) {
   if (!message || message.senderId !== session.user.id) return;
 
   await db.directMessage.delete({ where: { id: message.id } });
+  if (message.attachmentPath) {
+    try {
+      await del(message.attachmentPath);
+    } catch (error) {
+      console.error("Could not delete a private attachment", error);
+    }
+  }
   revalidatePath(`/messages/${message.recipientId}`);
   await Promise.all([pingUser(message.recipientId), pingUser(message.senderId)]);
 }
@@ -76,4 +85,29 @@ export async function unblockUser(otherId: string) {
 
   await db.userBlock.deleteMany({ where: { blockerId: session.user.id, blockedId: otherId } });
   revalidatePath(`/messages/${otherId}`);
+}
+
+/** Adds the reaction if you haven't given it, removes it if you have. Only the two people in the chat can react. */
+export async function toggleDirectReaction(messageId: string, emoji: string) {
+  if (!REACTION_EMOJIS.includes(emoji)) return;
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+  const me = session.user.id;
+
+  const message = await db.directMessage.findUnique({
+    where: { id: messageId },
+    select: { senderId: true, recipientId: true },
+  });
+  if (!message || (message.senderId !== me && message.recipientId !== me)) return;
+
+  const existing = await db.directReaction.findFirst({ where: { userId: me, messageId, emoji } });
+  if (existing) {
+    await db.directReaction.delete({ where: { id: existing.id } });
+  } else {
+    await db.directReaction.create({ data: { userId: me, messageId, emoji } });
+  }
+
+  const other = message.senderId === me ? message.recipientId : message.senderId;
+  revalidatePath(`/messages/${other}`);
+  await Promise.all([pingUser(other), pingUser(me)]);
 }

@@ -57,6 +57,7 @@ model User {
   dmReceived DirectMessage[] @relation("DmReceived")
   blocking   UserBlock[] @relation("Blocker")
   blockedBy  UserBlock[] @relation("Blocked")
+  directReactions DirectReaction[]
 }
 
 model Group {
@@ -283,6 +284,12 @@ model DirectMessage {
   createdAt   DateTime  @default(now())
   readAt      DateTime?
 
+  // Optional attached image or document (stored privately in Vercel Blob).
+  attachmentPath String?
+  attachmentName String?
+  attachmentSize Int?
+  reactions      DirectReaction[]
+
   sender    User @relation("DmSent", fields: [senderId], references: [id], onDelete: Cascade)
   recipient User @relation("DmReceived", fields: [recipientId], references: [id], onDelete: Cascade)
 
@@ -302,4 +309,17 @@ model UserBlock {
 
   @@unique([blockerId, blockedId])
   @@index([blockedId])
+}
+
+model DirectReaction {
+  id        String @id @default(cuid())
+  emoji     String
+  userId    String
+  messageId String
+
+  user    User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message DirectMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, messageId, emoji])
+  @@index([messageId])
 }

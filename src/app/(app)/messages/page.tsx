@@ -19,7 +19,7 @@ export default async function MessagesPage() {
     where: { OR: [{ senderId: me }, { recipientId: me }] },
     orderBy: { createdAt: "desc" },
     take: 300,
-    select: { senderId: true, recipientId: true, body: true, createdAt: true },
+    select: { senderId: true, recipientId: true, body: true, attachmentName: true, createdAt: true },
   });
   const latest = new Map<string, (typeof recent)[number]>();
   for (const m of recent) {
@@ -75,7 +75,7 @@ export default async function MessagesPage() {
                     </span>
                     <span className="block truncate text-sm text-muted">
                       {last.senderId === me ? "You: " : ""}
-                      {last.body}
+                      {last.body || `📎 ${last.attachmentName ?? "Attachment"}`}
                     </span>
                   </span>
                   {count > 0 && (

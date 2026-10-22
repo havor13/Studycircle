@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { auth } from "@/auth";
-import { blockUser, deleteDirectMessage, unblockUser } from "@/app/actions/direct";
+import { blockUser, deleteDirectMessage, toggleDirectReaction, unblockUser } from "@/app/actions/direct";
 import { Avatar } from "@/components/avatar";
 import { DirectForm } from "@/components/direct-form";
 import { LiveRefresh } from "@/components/live-refresh";
@@ -10,6 +10,8 @@ import { LocalTime } from "@/components/local-time";
 import { ScrollBox } from "@/components/scroll-box";
 import { db } from "@/lib/db";
 import { blockState, sharesCircle } from "@/lib/direct";
+import { IMAGE_EXTENSIONS, extensionOf, formatBytes } from "@/lib/files";
+import { REACTION_EMOJIS } from "@/lib/reactions";
 
 export const metadata: Metadata = { title: "Private chat" };
 
@@ -41,6 +43,7 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
 
   const recent = await db.directMessage.findMany({
     where: pairWhere,
+    include: { reactions: { select: { emoji: true, userId: true } } },
     orderBy: { createdAt: "desc" },
     take: 100,
   });
@@ -71,6 +74,12 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
           <ul className="space-y-3">
             {messages.map((m) => {
               const mine = m.senderId === me;
+              const summary = REACTION_EMOJIS.map((emoji) => {
+                const forEmoji = m.reactions.filter((r) => r.emoji === emoji);
+                return { emoji, count: forEmoji.length, reacted: forEmoji.some((r) => r.userId === me) };
+              });
+              const used = summary.filter((r) => r.count > 0);
+              const fileUrl = `/api/direct/messages/${m.id}/file`;
               return (
                 <li key={m.id} className={mine ? "flex justify-end" : "flex justify-start"}>
                   <div className={`max-w-[85%] rounded-2xl px-4 py-2 ${mine ? "bg-brand text-white" : "border border-line"}`}>
@@ -80,7 +89,78 @@ export default async function DirectChatPage({ params }: { params: Promise<{ use
                       <LocalTime iso={m.createdAt.toISOString()} />
                       {mine && m.readAt && <span className="ml-1">· Seen</span>}
                     </div>
-                    <p className="mt-0.5 whitespace-pre-wrap break-words">{m.body}</p>
+                    {m.body && <p className="mt-0.5 whitespace-pre-wrap break-words">{m.body}</p>}
+                    {m.attachmentPath &&
+                      (IMAGE_EXTENSIONS.has(extensionOf(m.attachmentPath)) ? (
+                        <a href={fileUrl} target="_blank" rel="noreferrer" className="mt-1 block">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={fileUrl}
+                            alt={m.attachmentName ?? "Image"}
+                            loading="lazy"
+                            className="max-h-64 max-w-full rounded-lg"
+                          />
+                        </a>
+                      ) : (
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className={`mt-1 inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-semibold underline ${
+                            mine ? "border-white/50" : "border-line"
+                          }`}
+                        >
+                          <span aria-hidden>📄</span>
+                          {m.attachmentName ?? "Document"}
+                          {m.attachmentSize ? ` (${formatBytes(m.attachmentSize)})` : ""}
+                        </a>
+                      ))}
+
+                    <div className="mt-1 flex flex-wrap items-start gap-1">
+                      {used.map(({ emoji, count, reacted }) => (
+                        <form key={emoji} action={toggleDirectReaction.bind(null, m.id, emoji)}>
+                          <button
+                            aria-pressed={reacted}
+                            aria-label={`${emoji}, ${count} ${count === 1 ? "reaction" : "reactions"}`}
+                            className={`rounded-full border px-2 py-0.5 text-xs ${
+                              mine
+                                ? reacted
+                                  ? "border-white bg-white/25"
+                                  : "border-white/40 hover:border-white"
+                                : reacted
+                                  ? "border-brand bg-brand/10"
+                                  : "border-line hover:border-brand"
+                            }`}
+                          >
+                            {emoji} {count}
+                          </button>
+                        </form>
+                      ))}
+                      <details>
+                        <summary
+                          aria-label="Add a reaction"
+                          className={`cursor-pointer list-none rounded-full border px-2 py-0.5 text-xs ${
+                            mine ? "border-white/40 hover:border-white" : "border-line hover:border-brand"
+                          }`}
+                        >
+                          ＋
+                        </summary>
+                        <div className="mt-1 flex gap-1">
+                          {REACTION_EMOJIS.map((emoji) => (
+                            <form key={emoji} action={toggleDirectReaction.bind(null, m.id, emoji)}>
+                              <button
+                                aria-label={`React with ${emoji}`}
+                                className={`rounded-full border px-2 py-0.5 text-sm ${
+                                  mine ? "border-white/40 hover:border-white" : "border-line hover:border-brand"
+                                }`}
+                              >
+                                {emoji}
+                              </button>
+                            </form>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
                     {mine && (
                       <form action={deleteDirectMessage.bind(null, m.id)} className="mt-1">
                         <button className="text-xs font-semibold text-white/80 hover:text-white">Delete</button>
