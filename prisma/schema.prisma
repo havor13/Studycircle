@@ -28,6 +28,12 @@ enum NotificationKind {
   POST_REACTION
   NEW_EVENT // NEW in step 13
   EVENT_REMINDER // NEW in step 18
+  CONTENT_REPORT // NEW in step 33
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
 }
 
 model User {
@@ -58,6 +64,8 @@ model User {
   blocking   UserBlock[] @relation("Blocker")
   blockedBy  UserBlock[] @relation("Blocked")
   directReactions DirectReaction[]
+  reportsMade     ContentReport[] @relation("Reporter")
+  reportsHandled  ContentReport[] @relation("Resolver")
 }
 
 model Group {
@@ -79,6 +87,7 @@ model Group {
   notifications Notification[] // NEW in step 8
   events        StudyEvent[] // NEW in step 13
   inviteEmails  InviteEmail[] // NEW in step 17
+  reports       ContentReport[]
 }
 
 // Roles live here so pinned posts and moderation tools can be added later
@@ -110,6 +119,7 @@ model Post {
   group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
   author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   reactions Reaction[]
+  reports   ContentReport[]
 
   @@index([groupId, createdAt])
 }
@@ -129,6 +139,7 @@ model Message {
   group     Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
   author    User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
   reactions Reaction[]
+  reports   ContentReport[]
 
   @@index([groupId, createdAt])
 }
@@ -322,4 +333,28 @@ model DirectReaction {
 
   @@unique([userId, messageId, emoji])
   @@index([messageId])
+}
+
+// A member flags a post or a circle chat message for the circle's moderators.
+model ContentReport {
+  id           String       @id @default(cuid())
+  groupId      String
+  reporterId   String
+  postId       String?
+  messageId    String?
+  reason       String
+  status       ReportStatus @default(OPEN)
+  createdAt    DateTime     @default(now())
+  resolvedById String?
+  resolvedAt   DateTime?
+
+  group      Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  reporter   User     @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  resolvedBy User?    @relation("Resolver", fields: [resolvedById], references: [id], onDelete: SetNull)
+  post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  message    Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([reporterId, postId])
+  @@unique([reporterId, messageId])
+  @@index([groupId, status, createdAt])
 }

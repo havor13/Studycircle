@@ -36,7 +36,7 @@ export async function notify(items: NewNotification[]) {
 }
 
 // Reactions would be too noisy by email. The bell still shows them.
-const EMAIL_KINDS = new Set<NotificationKind>(["NEW_POST", "NEW_EVENT", "EVENT_REMINDER", "ROLE_CHANGED", "MEMBER_JOINED"]);
+const EMAIL_KINDS = new Set<NotificationKind>(["NEW_POST", "NEW_EVENT", "EVENT_REMINDER", "ROLE_CHANGED", "MEMBER_JOINED", "CONTENT_REPORT"]);
 const MAX_EMAILS_PER_EVENT = 25;
 
 async function emailRecipients(items: NewNotification[]) {

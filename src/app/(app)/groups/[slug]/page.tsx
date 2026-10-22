@@ -16,6 +16,7 @@ import { EventForm } from "@/components/event-form";
 import { InviteEmailForm } from "@/components/invite-email-form";
 import { InviteLink } from "@/components/invite-link";
 import { LocalTime } from "@/components/local-time";
+import { ReportButton } from "@/components/report-button";
 import { PostBody } from "@/components/post-body";
 import { PostForm } from "@/components/post-form";
 import { ResourceForm } from "@/components/resource-form";
@@ -110,6 +111,7 @@ export default async function GroupPage({
     inviteUrl = `${proto}://${host}/join/${group.inviteCode}`;
   }
   const moderator = canModerate(myRole);
+  const openReports = moderator ? await db.contentReport.count({ where: { groupId: group.id, status: "OPEN" } }) : 0;
 
   return (
     <div>
@@ -130,6 +132,14 @@ export default async function GroupPage({
         >
           Progress
         </Link>
+        {moderator && (
+          <Link
+            href={`/groups/${group.slug}/reports`}
+            className="inline-block rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand"
+          >
+            Reports{openReports > 0 ? ` (${openReports})` : ""}
+          </Link>
+        )}
       </div>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
@@ -195,6 +205,7 @@ export default async function GroupPage({
                             </button>
                           </form>
                         )}
+                        {!mine && <ReportButton kind="post" id={post.id} />}
                         {(mine || moderator) && (
                           <form action={deletePost.bind(null, post.id)}>
                             <button className="text-muted hover:text-red-600">Delete</button>

@@ -8,6 +8,7 @@ import { toggleMessageReaction } from "@/app/actions/reactions";
 import { Avatar } from "@/components/avatar";
 import { ChatForm } from "@/components/chat-form";
 import { ChatLog } from "@/components/chat-log";
+import { ReportButton } from "@/components/report-button";
 import { LocalTime } from "@/components/local-time";
 import { IMAGE_EXTENSIONS, extensionOf, formatBytes } from "@/lib/files";
 import { canModerate } from "@/lib/permissions";
@@ -179,6 +180,11 @@ export default async function ChatPage({
                         </div>
                       </details>
                     </div>
+                    {!mine && (
+                      <div className="mt-1">
+                        <ReportButton kind="message" id={m.id} />
+                      </div>
+                    )}
                     {(mine || moderator) && (
                       <form action={deleteMessage.bind(null, m.id)} className="mt-1">
                         <button
