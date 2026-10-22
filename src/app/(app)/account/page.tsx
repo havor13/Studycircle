@@ -5,8 +5,8 @@ import { db } from "@/lib/db";
 import { Avatar } from "@/components/avatar";
 import { AvatarForm } from "@/components/avatar-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
-import { DeleteAccountForm } from "@/components/delete-account-form";
 import { EmailSettings } from "@/components/email-settings";
+import { ProfileForm } from "@/components/profile-form";
 import { logoutEverywhere } from "@/app/actions/account";
 import { mailConfigured } from "@/lib/mailer";
 
@@ -18,7 +18,7 @@ export default async function AccountPage() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, email: true, image: true, emailNotifications: true },
+    select: { name: true, bio: true, email: true, image: true, emailNotifications: true },
   });
   if (!user) redirect("/login");
 
@@ -30,6 +30,14 @@ export default async function AccountPage() {
       </p>
 
       <section className="mt-8 rounded-2xl border border-line bg-surface p-5">
+        <h2 className="font-display text-lg font-bold">Your name and bio</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">
+          Your name appears on your posts and messages. Your bio is shown to people you message privately.
+        </p>
+        <ProfileForm name={user.name} bio={user.bio ?? ""} />
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
         <h2 className="font-display text-lg font-bold">Profile picture</h2>
         <div className="mt-3 flex items-center gap-4">
           <Avatar userId={session.user.id} name={user.name} image={user.image} size={72} />
@@ -66,13 +74,6 @@ export default async function AccountPage() {
             Log out everywhere
           </button>
         </form>
-      </section>
-
-      <section className="mt-6 rounded-2xl border border-red-200 bg-surface p-5">
-        <details>
-          <summary className="cursor-pointer font-display text-lg font-bold text-red-600">Delete account</summary>
-          <DeleteAccountForm />
-        </details>
       </section>
     </div>
   );

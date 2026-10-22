@@ -32,7 +32,7 @@ export default async function DirectChatPage({
   const shown = Number.isFinite(asked) ? Math.min(Math.max(asked, 100), 1000) : 100;
   if (otherId === me) redirect("/messages");
 
-  const other = await db.user.findUnique({ where: { id: otherId }, select: { id: true, name: true, image: true } });
+  const other = await db.user.findUnique({ where: { id: otherId }, select: { id: true, name: true, image: true, bio: true } });
   if (!other) notFound();
 
   const pairWhere = {
@@ -75,6 +75,7 @@ export default async function DirectChatPage({
         <Avatar userId={other.id} name={other.name} image={other.image} size={36} />
         {other.name}
       </h1>
+      {other.bio && <p className="mt-1 whitespace-pre-wrap text-sm">{other.bio}</p>}
       <p className="mb-4 mt-1 text-sm text-muted">Private: only you and {other.name} can read this. Showing the latest {messages.length}.</p>
 
       <ScrollBox count={messages.length} firstId={messages[0]?.id}>

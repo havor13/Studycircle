@@ -4,6 +4,8 @@ import bcrypt from "bcryptjs";
 import { auth, signOut } from "@/auth";
 import { db } from "@/lib/db";
 import { appUrl, mailConfigured, sendMail } from "@/lib/mailer";
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { changePasswordSchema, type FormState } from "@/lib/validations";
 
 export type PasswordState = FormState & { done?: boolean };
@@ -29,6 +31,33 @@ export async function changePassword(_prev: PasswordState, formData: FormData): 
     data: { passwordHash: await bcrypt.hash(newPassword, 12) },
   });
 
+  return { done: true };
+}
+
+const profileSchema = z.object({
+  name: z.string().trim().min(2, "Your name must be at least 2 characters.").max(60, "Keep your name under 60 characters."),
+  bio: z.string().trim().max(200, "Keep your bio under 200 characters."),
+});
+
+export type ProfileState = FormState & { done?: boolean };
+
+/** Changes the logged-in person's display name and short bio. The email is not changed here. */
+export async function updateProfile(_prev: ProfileState, formData: FormData): Promise<ProfileState> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Please log in again." };
+
+  const parsed = profileSchema.safeParse({
+    name: formData.get("name") ?? "",
+    bio: formData.get("bio") ?? "",
+  });
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { name: parsed.data.name, bio: parsed.data.bio || null },
+  });
+
+  revalidatePath("/", "layout");
   return { done: true };
 }
 

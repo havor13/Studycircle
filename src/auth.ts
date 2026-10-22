@@ -43,11 +43,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!token.id) return null;
       const row = await db.user.findUnique({
         where: { id: token.id as string },
-        select: { tokenVersion: true },
+        select: { tokenVersion: true, name: true },
       });
       if (!row) return null; // account deleted
       // Cookies made before this feature have no number: treat them as generation 0.
       if (((token.v as number | undefined) ?? 0) !== row.tokenVersion) return null; // logged out everywhere
+      token.name = row.name; // a name change shows up at once, without logging in again
       return token;
     },
   },
