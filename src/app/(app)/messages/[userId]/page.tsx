@@ -71,10 +71,20 @@ export default async function DirectChatPage({
       <Link href="/messages" className="text-sm font-semibold text-brand hover:underline">
         ← All private messages
       </Link>
-      <h1 className="mt-2 flex items-center gap-3 font-display text-3xl font-bold">
-        <Avatar userId={other.id} name={other.name} image={other.image} size={36} />
-        {other.name}
-      </h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="flex items-center gap-3 font-display text-3xl font-bold">
+          <Avatar userId={other.id} name={other.name} image={other.image} size={36} />
+          {other.name}
+        </h1>
+        {canSend && (
+          <Link
+            href={`/messages/${other.id}/call`}
+            className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand"
+          >
+            <span aria-hidden>📞</span> Call
+          </Link>
+        )}
+      </div>
       {other.bio && <p className="mt-1 whitespace-pre-wrap text-sm">{other.bio}</p>}
       <p className="mb-4 mt-1 text-sm text-muted">Private: only you and {other.name} can read this. Showing the latest {messages.length}.</p>
 

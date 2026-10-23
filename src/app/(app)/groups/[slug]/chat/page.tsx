@@ -58,7 +58,15 @@ export default async function ChatPage({
       <Link href={`/groups/${group.slug}`} className="text-sm font-semibold text-brand hover:underline">
         ← Back to {group.name}
       </Link>
-      <h1 className="mt-2 font-display text-3xl font-bold">{group.name} chat</h1>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-3xl font-bold">{group.name} chat</h1>
+        <Link
+          href={`/groups/${group.slug}/call`}
+          className="rounded-lg border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand"
+        >
+          <span aria-hidden>📞</span> Call
+        </Link>
+      </div>
       <p className="mb-4 mt-1 text-sm text-muted">
         New messages appear as they are sent. Showing the latest {messages.length}.
       </p>
