@@ -6,6 +6,7 @@ import { del } from "@vercel/blob";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
+import { emailAboutDirectMessage, isFirstUnread } from "@/lib/direct-mail";
 import { MAX_DM_LENGTH, MAX_DM_PER_MINUTE, blockState, sharesCircle } from "@/lib/direct";
 import { pingUser } from "@/lib/pusher-server";
 import { REACTION_EMOJIS } from "@/lib/reactions";
@@ -36,7 +37,9 @@ export async function sendDirectMessage(otherId: string, _prev: FormState, formD
   });
   if (recent >= MAX_DM_PER_MINUTE) return { error: "You are sending very fast. Wait a minute and try again." };
 
+  const firstUnread = await isFirstUnread(me, otherId);
   await db.directMessage.create({ data: { senderId: me, recipientId: otherId, body: parsed.data.body } });
+  if (firstUnread) emailAboutDirectMessage(session.user.name ?? "Someone", me, otherId);
   revalidatePath(`/messages/${otherId}`);
   await Promise.all([pingUser(otherId), pingUser(me)]);
   return {};

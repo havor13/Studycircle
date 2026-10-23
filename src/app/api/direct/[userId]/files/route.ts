@@ -3,6 +3,7 @@ import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { blockState, sharesCircle } from "@/lib/direct";
+import { emailAboutDirectMessage, isFirstUnread } from "@/lib/direct-mail";
 import { FILE_TYPES, MAX_FILE_BYTES, extensionOf, safeFileName } from "@/lib/files";
 import { pingUser } from "@/lib/pusher-server";
 
@@ -62,6 +63,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
     return fail("The file could not be stored. Check that BLOB_READ_WRITE_TOKEN is set.", 500);
   }
 
+  const firstUnread = await isFirstUnread(me, otherId);
   await db.directMessage.create({
     data: {
       senderId: me,
@@ -72,6 +74,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ use
       attachmentSize: file.size,
     },
   });
+  if (firstUnread) emailAboutDirectMessage(session.user.name ?? "Someone", me, otherId);
   await Promise.all([pingUser(otherId), pingUser(me)]);
   return NextResponse.json({ ok: true });
 }
