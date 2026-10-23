@@ -5,11 +5,13 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { changeRole, leaveGroup, removeMember, transferOwnership } from "@/app/actions/members";
 import { deletePost, togglePin } from "@/app/actions/posts";
+import { deleteComment } from "@/app/actions/comments";
 import { togglePostReaction } from "@/app/actions/reactions";
 import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
+import { CommentForm } from "@/components/comment-form";
 import { DeleteCircleForm } from "@/components/delete-circle-form";
 import { EventEditForm } from "@/components/event-edit-form";
 import { EventForm } from "@/components/event-form";
@@ -67,6 +69,11 @@ export default async function GroupPage({
       include: {
         author: { select: { name: true, image: true } },
         reactions: { select: { emoji: true, userId: true } },
+        comments: {
+          orderBy: { createdAt: "asc" },
+          take: 50,
+          include: { author: { select: { name: true, image: true } } },
+        },
       },
       orderBy: [{ pinned: "desc" }, { createdAt: "desc" }],
       take: shown + 1, // one extra row tells us whether there is more
@@ -248,6 +255,34 @@ export default async function GroupPage({
                         );
                       })}
                     </div>
+
+                    {/* Comments */}
+                    <section aria-label={`Comments on ${post.author.name}'s post`} className="mt-4 border-t border-line pt-3">
+                      {post.comments.length > 0 && (
+                        <ul className="space-y-3">
+                          {post.comments.map((c) => (
+                            <li key={c.id} className="flex items-start gap-2 text-sm">
+                              <Avatar userId={c.authorId} name={c.author.name} image={c.author.image} size={22} />
+                              <div className="min-w-0 flex-1">
+                                <div className="flex flex-wrap items-baseline gap-x-2">
+                                  <span className="font-semibold">{c.author.name}</span>
+                                  <span className="text-xs text-muted">
+                                    <LocalTime iso={c.createdAt.toISOString()} />
+                                  </span>
+                                  {(c.authorId === userId || moderator) && (
+                                    <form action={deleteComment.bind(null, c.id)}>
+                                      <button className="text-xs text-muted hover:text-red-600">Delete</button>
+                                    </form>
+                                  )}
+                                </div>
+                                <p className="whitespace-pre-wrap break-words">{c.body}</p>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                      <CommentForm postId={post.id} />
+                    </section>
                   </li>
                 );
               })}
