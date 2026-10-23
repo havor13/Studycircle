@@ -50,6 +50,26 @@ export async function createComment(postId: string, _prev: CommentState, formDat
   return {};
 }
 
+/** Only the author can change the words of their comment. */
+export async function updateComment(commentId: string, _prev: CommentState, formData: FormData): Promise<CommentState & { done?: boolean }> {
+  const parsed = commentSchema.safeParse({ body: formData.get("body") ?? "" });
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+
+  const comment = await db.comment.findUnique({
+    where: { id: commentId },
+    select: { authorId: true, body: true, post: { select: { groupId: true } } },
+  });
+  if (!comment) return { error: "That comment no longer exists." };
+  const { userId, slug } = await requireMember(comment.post.groupId);
+  if (comment.authorId !== userId) return { error: "You can only edit your own comments." };
+
+  if (comment.body !== parsed.data.body) {
+    await db.comment.update({ where: { id: commentId }, data: { body: parsed.data.body, editedAt: new Date() } });
+    revalidatePath(`/groups/${slug}`);
+  }
+  return { done: true };
+}
+
 /** The comment's author, or a moderator, can delete a comment. */
 export async function deleteComment(commentId: string) {
   const comment = await db.comment.findUnique({

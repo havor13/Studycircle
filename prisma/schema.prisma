@@ -345,6 +345,7 @@ model ContentReport {
   reporterId   String
   postId       String?
   messageId    String?
+  commentId    String? // NEW in step 38
   reason       String
   status       ReportStatus @default(OPEN)
   createdAt    DateTime     @default(now())
@@ -356,9 +357,11 @@ model ContentReport {
   resolvedBy User?    @relation("Resolver", fields: [resolvedById], references: [id], onDelete: SetNull)
   post       Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
   message    Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  comment    Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
 
   @@unique([reporterId, postId])
   @@unique([reporterId, messageId])
+  @@unique([reporterId, commentId])
   @@index([groupId, status, createdAt])
 }
 
@@ -369,9 +372,11 @@ model Comment {
   authorId  String
   body      String
   createdAt DateTime @default(now())
+  editedAt  DateTime? // NEW in step 38: set when the author edits the text
 
-  post   Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  post    Post            @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author  User            @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  reports ContentReport[]
 
   @@index([postId, createdAt])
 }

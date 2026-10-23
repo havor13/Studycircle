@@ -88,6 +88,29 @@ export async function reportMessage(messageId: string, _prev: ReportState, formD
   return { done: true };
 }
 
+export async function reportComment(commentId: string, _prev: ReportState, formData: FormData): Promise<ReportState> {
+  const parsed = reasonSchema.safeParse({ reason: formData.get("reason") ?? "" });
+  if (!parsed.success) return { fieldErrors: parsed.error.flatten().fieldErrors };
+
+  const comment = await db.comment.findUnique({
+    where: { id: commentId },
+    select: { authorId: true, post: { select: { groupId: true } } },
+  });
+  if (!comment) return { error: "That comment no longer exists." };
+  const groupId = comment.post.groupId;
+  const { userId, groupName, slug } = await requireMember(groupId);
+
+  if (comment.authorId === userId) return { error: "You cannot report your own comment." };
+  if (await tooManyReports(userId)) return { error: "You have sent several reports. Try again later." };
+  if (await db.contentReport.findFirst({ where: { reporterId: userId, commentId }, select: { id: true } })) {
+    return { done: true };
+  }
+
+  await db.contentReport.create({ data: { groupId, reporterId: userId, commentId, reason: parsed.data.reason } });
+  await alertModerators(groupId, groupName, slug, "A comment", [userId, comment.authorId]);
+  return { done: true };
+}
+
 /** Moderators: "I looked at it, nothing more to do." */
 export async function resolveReport(reportId: string) {
   const report = await db.contentReport.findUnique({ where: { id: reportId }, select: { groupId: true } });
@@ -107,7 +130,7 @@ export async function resolveReport(reportId: string) {
 export async function removeReportedContent(reportId: string) {
   const report = await db.contentReport.findUnique({
     where: { id: reportId },
-    select: { groupId: true, postId: true, messageId: true, message: { select: { attachmentPath: true } } },
+    select: { groupId: true, postId: true, messageId: true, commentId: true, message: { select: { attachmentPath: true } } },
   });
   if (!report) return;
   const { membership, slug } = await requireMember(report.groupId);
@@ -115,6 +138,8 @@ export async function removeReportedContent(reportId: string) {
 
   if (report.postId) {
     await db.post.delete({ where: { id: report.postId } });
+  } else if (report.commentId) {
+    await db.comment.delete({ where: { id: report.commentId } });
   } else if (report.messageId) {
     await db.message.delete({ where: { id: report.messageId } });
     if (report.message?.attachmentPath) {

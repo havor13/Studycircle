@@ -28,6 +28,7 @@ export default async function ReportsPage({ params }: { params: Promise<{ slug: 
     resolvedBy: { select: { name: true } },
     post: { select: { body: true, author: { select: { name: true } } } },
     message: { select: { body: true, attachmentName: true, author: { select: { name: true } } } },
+    comment: { select: { body: true, author: { select: { name: true } } } },
   } as const;
   const [open, handled] = await Promise.all([
     db.contentReport.findMany({ where: { groupId: group.id, status: "OPEN" }, include, orderBy: { createdAt: "asc" }, take: 100 }),
@@ -36,6 +37,7 @@ export default async function ReportsPage({ params }: { params: Promise<{ slug: 
 
   const describe = (r: (typeof open)[number]) => {
     if (r.post) return { kind: "Post", author: r.post.author.name, text: r.post.body };
+    if (r.comment) return { kind: "Comment", author: r.comment.author.name, text: r.comment.body };
     if (r.message) {
       const file = r.message.attachmentName ? `📎 ${r.message.attachmentName}` : "";
       return { kind: "Chat message", author: r.message.author.name, text: [r.message.body, file].filter(Boolean).join("\n") };
@@ -50,7 +52,7 @@ export default async function ReportsPage({ params }: { params: Promise<{ slug: 
       </Link>
       <h1 className="mt-2 font-display text-3xl font-bold">Reports</h1>
       <p className="mb-6 mt-1 text-sm text-muted">
-        Posts and chat messages members flagged. Only the owner, admins and moderators of this circle see this page.
+        Posts, comments and chat messages members flagged. Only the owner, admins and moderators of this circle see this page.
       </p>
 
       <h2 className="font-display text-xl font-bold">Open ({open.length})</h2>

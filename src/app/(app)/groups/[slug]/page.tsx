@@ -11,6 +11,7 @@ import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
+import { CommentEditForm } from "@/components/comment-edit-form";
 import { CommentForm } from "@/components/comment-form";
 import { DeleteCircleForm } from "@/components/delete-circle-form";
 import { EventEditForm } from "@/components/event-edit-form";
@@ -269,6 +270,8 @@ export default async function GroupPage({
                                   <span className="text-xs text-muted">
                                     <LocalTime iso={c.createdAt.toISOString()} />
                                   </span>
+                                  {c.editedAt && <span className="text-xs text-muted">(edited)</span>}
+                                  {c.authorId !== userId && <ReportButton kind="comment" id={c.id} />}
                                   {(c.authorId === userId || moderator) && (
                                     <form action={deleteComment.bind(null, c.id)}>
                                       <button className="text-xs text-muted hover:text-red-600">Delete</button>
@@ -276,6 +279,7 @@ export default async function GroupPage({
                                   )}
                                 </div>
                                 <p className="whitespace-pre-wrap break-words">{c.body}</p>
+                                {c.authorId === userId && <CommentEditForm commentId={c.id} body={c.body} />}
                               </div>
                             </li>
                           ))}
