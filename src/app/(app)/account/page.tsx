@@ -77,6 +77,22 @@ export default async function AccountPage() {
       </section>
 
       <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
+        <h2 className="font-display text-lg font-bold">Download my data</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">
+          Get a copy of everything you have on StudyCircle: your details, posts, comments, chat and private messages,
+          resources, study time and more, as one file. Your password is never included. Keep the file safe: it contains
+          your private messages.
+        </p>
+        <a
+          href="/api/account/export"
+          download
+          className="inline-block rounded-lg border border-line px-4 py-2 text-sm font-semibold hover:border-brand"
+        >
+          Download my data
+        </a>
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
         <h2 className="font-display text-lg font-bold">Log out everywhere</h2>
         <p className="mb-4 mt-1 text-sm text-muted">
           Logs this account out on every phone and computer, including this one. You will need to log in again.
