@@ -33,6 +33,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           </div>
           <div className="flex items-center gap-4 text-sm">
             <NavLink
+              href="/search"
+              aria-label="Search your circles"
+              activeClassName="border-brand"
+              className="rounded-lg border border-line px-3 py-1.5 hover:border-brand"
+            >
+              <span aria-hidden="true">🔍</span>
+            </NavLink>
+            <NavLink
               href="/messages"
               activeClassName="border-brand"
               aria-label={unreadDm > 0 ? `Private messages, ${unreadDm} unread` : "Private messages"}
