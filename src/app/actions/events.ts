@@ -22,7 +22,12 @@ const eventSchema = z.object({
     .default(60),
   location: z.string().trim().max(200, "Keep it under 200 characters.").optional(),
   notes: z.string().trim().max(500, "Keep it under 500 characters.").optional(),
+  // Weekly repeats: the browser works out each date in the viewer's own time zone (so daylight saving is right)
+  // and sends them as a comma-separated list of ISO times. Empty means a single session.
+  repeatStarts: z.string().optional(),
 });
+
+const MAX_REPEATS = 11; // the first session plus 11 more = 12 weeks
 
 export async function createEvent(
   groupId: string,
@@ -46,19 +51,33 @@ export async function createEvent(
     return { fieldErrors: { startsAt: ["Pick a date within the next year."] } };
   }
 
-  await db.studyEvent.create({
-    data: {
-      groupId,
-      creatorId: userId,
-      title,
-      startsAt,
-      durationMinutes,
-      location: location || null,
-      notes: notes || null,
-      // The organiser is going by default.
-      rsvps: { create: { userId } },
-    },
-  });
+  const repeats = (parsed.data.repeatStarts ?? "")
+    .split(",")
+    .map((v) => v.trim())
+    .filter(Boolean)
+    .map((v) => new Date(v));
+  if (
+    repeats.length > MAX_REPEATS ||
+    repeats.some((d) => Number.isNaN(d.getTime()) || d.getTime() <= startsAt.getTime() || d.getTime() > now + 366 * 24 * 60 * 60 * 1000)
+  ) {
+    return { fieldErrors: { startsAt: ["Repeats must stay within the next year (up to 12 weeks)."] } };
+  }
+
+  for (const when of [startsAt, ...repeats]) {
+    await db.studyEvent.create({
+      data: {
+        groupId,
+        creatorId: userId,
+        title,
+        startsAt: when,
+        durationMinutes,
+        location: location || null,
+        notes: notes || null,
+        // The organiser is going by default.
+        rsvps: { create: { userId } },
+      },
+    });
+  }
 
   const others = await db.membership.findMany({
     where: { groupId, userId: { not: userId } },
@@ -70,7 +89,10 @@ export async function createEvent(
       actorId: userId,
       groupId,
       kind: "NEW_EVENT" as const,
-      message: `${userName} planned a study session in ${groupName}: ${title}`,
+      message:
+        repeats.length > 0
+          ? `${userName} planned ${repeats.length + 1} weekly study sessions in ${groupName}: ${title}`
+          : `${userName} planned a study session in ${groupName}: ${title}`,
       link: `/groups/${slug}`,
     })),
   );

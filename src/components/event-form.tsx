@@ -13,21 +13,34 @@ export function EventForm({ groupId }: { groupId: string }) {
   );
   const formRef = useRef<HTMLFormElement>(null);
   const [local, setLocal] = useState("");
+  const [weeks, setWeeks] = useState("1");
 
   // The picker gives a time in the viewer's own zone. Convert it to UTC before sending.
   const date = local ? new Date(local) : null;
   const iso = date && !Number.isNaN(date.getTime()) ? date.toISOString() : "";
 
+  // Same clock time each week in the viewer's zone, even across a daylight saving change.
+  const repeatStarts: string[] = [];
+  if (date && !Number.isNaN(date.getTime())) {
+    for (let i = 1; i < Number(weeks); i++) {
+      const next = new Date(date);
+      next.setDate(next.getDate() + 7 * i);
+      repeatStarts.push(next.toISOString());
+    }
+  }
+
   useEffect(() => {
     if (state.done) {
       formRef.current?.reset();
       setLocal("");
+      setWeeks("1");
     }
   }, [state]);
 
   return (
     <form ref={formRef} action={action} className="mt-3 space-y-3" noValidate>
       <input type="hidden" name="startsAt" value={iso} />
+      <input type="hidden" name="repeatStarts" value={repeatStarts.join(",")} />
 
       <div>
         <label htmlFor="ev-title" className="block text-xs font-semibold">Title</label>
@@ -59,6 +72,16 @@ export function EventForm({ groupId }: { groupId: string }) {
       </div>
 
       <div>
+        <label htmlFor="ev-repeat" className="block text-xs font-semibold">Repeat</label>
+        <select id="ev-repeat" value={weeks} onChange={(e) => setWeeks(e.target.value)} className={inputClass}>
+          <option value="1">Does not repeat</option>
+          <option value="4">Weekly for 4 weeks</option>
+          <option value="8">Weekly for 8 weeks</option>
+          <option value="12">Weekly for 12 weeks</option>
+        </select>
+      </div>
+
+      <div>
         <label htmlFor="ev-where" className="block text-xs font-semibold">Where (optional)</label>
         <input id="ev-where" name="location" placeholder="Library room 2, or a meeting link" className={inputClass} />
         {state.fieldErrors?.location && <p className="mt-1 text-xs text-red-600">{state.fieldErrors.location[0]}</p>}
@@ -71,7 +94,7 @@ export function EventForm({ groupId }: { groupId: string }) {
       </div>
 
       {state.error && <p role="alert" className="text-xs text-red-600">{state.error}</p>}
-      {state.done && <p role="status" className="text-xs text-green-700">Session planned. Everyone has been told.</p>}
+      {state.done && <p role="status" className="text-xs text-green-700">Done. Everyone has been told.</p>}
 
       <button
         disabled={pending}
