@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { JoinByCodeForm } from "@/components/join-by-code-form";
+import { LocalTime } from "@/components/local-time";
 
 export const metadata: Metadata = { title: "Dashboard" };
 
@@ -15,6 +16,16 @@ export default async function DashboardPage() {
     where: { userId: session.user.id },
     include: { group: { include: { _count: { select: { memberships: true } } } } },
     orderBy: { joinedAt: "desc" },
+  });
+
+  const upcoming = await db.studyEvent.findMany({
+    where: {
+      startsAt: { gte: new Date() },
+      group: { memberships: { some: { userId: session.user.id } } },
+    },
+    select: { id: true, title: true, startsAt: true, durationMinutes: true, location: true, group: { select: { name: true, slug: true } } },
+    orderBy: { startsAt: "asc" },
+    take: 5,
   });
 
   const firstName = session.user.name?.split(" ")[0] ?? "there";
@@ -41,6 +52,30 @@ export default async function DashboardPage() {
       </div>
 
       <JoinByCodeForm />
+
+      {upcoming.length > 0 && (
+        <section aria-labelledby="coming-up" className="mb-8 rounded-2xl border border-line bg-surface p-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="coming-up" className="font-display text-xl font-bold">Coming up</h2>
+            <a href="/api/calendar" download className="text-sm font-semibold text-brand hover:underline">
+              Add all to my calendar
+            </a>
+          </div>
+          <ul className="mt-3 divide-y divide-line">
+            {upcoming.map((ev) => (
+              <li key={ev.id} className="py-2.5 text-sm">
+                <Link href={`/groups/${ev.group.slug}`} className="font-semibold hover:underline">
+                  {ev.title}
+                </Link>
+                <p className="text-muted">
+                  {ev.group.name} · <LocalTime iso={ev.startsAt.toISOString()} /> · {ev.durationMinutes} min
+                  {ev.location ? ` · ${ev.location}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {memberships.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-line bg-surface p-10 text-center">
