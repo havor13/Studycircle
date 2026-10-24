@@ -107,6 +107,8 @@ model Membership {
   groupId  String
   role     Role     @default(MEMBER)
   joinedAt DateTime @default(now())
+  postsSeenAt DateTime @default(now()) // NEW in step 48: last time this person opened the circle page
+  chatSeenAt  DateTime @default(now()) // NEW in step 48: last time this person opened the circle chat
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   group Group @relation(fields: [groupId], references: [id], onDelete: Cascade)

@@ -18,6 +18,21 @@ export default async function DashboardPage() {
     orderBy: { joinedAt: "desc" },
   });
 
+  const me = session.user.id;
+  // What happened since you last looked: other people's posts and comments, and chat messages.
+  const unread = new Map(
+    await Promise.all(
+      memberships.map(async (m) => {
+        const [posts, comments, chat] = await Promise.all([
+          db.post.count({ where: { groupId: m.groupId, authorId: { not: me }, createdAt: { gt: m.postsSeenAt } } }),
+          db.comment.count({ where: { post: { groupId: m.groupId }, authorId: { not: me }, createdAt: { gt: m.postsSeenAt } } }),
+          db.message.count({ where: { groupId: m.groupId, authorId: { not: me }, createdAt: { gt: m.chatSeenAt } } }),
+        ]);
+        return [m.groupId, { posts: posts + comments, chat }] as const;
+      }),
+    ),
+  );
+
   const upcoming = await db.studyEvent.findMany({
     where: {
       startsAt: { gte: new Date() },
@@ -86,7 +101,9 @@ export default async function DashboardPage() {
         </div>
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {memberships.map(({ group, role }) => (
+          {memberships.map(({ group, role, groupId }) => {
+            const n = unread.get(groupId) ?? { posts: 0, chat: 0 };
+            return (
             <li key={group.id}>
               <Link
                 href={`/groups/${group.slug}`}
@@ -97,9 +114,24 @@ export default async function DashboardPage() {
                 <p className="mt-4 text-sm text-muted">
                   {group._count.memberships} members · You are {role.toLowerCase()}
                 </p>
+                {(n.posts > 0 || n.chat > 0) && (
+                  <p className="mt-2 flex flex-wrap gap-2 text-xs font-semibold">
+                    {n.posts > 0 && (
+                      <span className="rounded-full bg-brand px-2.5 py-0.5 text-white">
+                        {n.posts > 99 ? "99+" : n.posts} new in posts
+                      </span>
+                    )}
+                    {n.chat > 0 && (
+                      <span className="rounded-full bg-brand px-2.5 py-0.5 text-white">
+                        {n.chat > 99 ? "99+" : n.chat} new in chat
+                      </span>
+                    )}
+                  </p>
+                )}
               </Link>
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </>

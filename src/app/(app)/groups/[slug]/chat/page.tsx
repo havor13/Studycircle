@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { after } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { deleteMessage } from "@/app/actions/messages";
@@ -39,6 +40,14 @@ export default async function ChatPage({
     where: { userId_groupId: { userId, groupId: group.id } },
   });
   if (!membership) notFound(); // only members can read or send
+
+  after(async () => {
+    try {
+      await db.membership.update({ where: { id: membership.id }, data: { chatSeenAt: new Date() } });
+    } catch {
+      // A missed update only leaves the badge up a little longer.
+    }
+  });
 
   // Newest 100, then flip so the oldest of those is at the top.
   const recent = await db.message.findMany({

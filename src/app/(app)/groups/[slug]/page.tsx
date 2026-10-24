@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
+import { after } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { changeRole, leaveGroup, removeMember, transferOwnership } from "@/app/actions/members";
@@ -61,6 +62,15 @@ export default async function GroupPage({
     where: { userId_groupId: { userId, groupId: group.id } },
   });
   if (!membership) notFound(); // hides circles you are not a member of
+
+  // Opening the circle clears its "new posts" badge on the dashboard (after the page is sent).
+  after(async () => {
+    try {
+      await db.membership.update({ where: { id: membership.id }, data: { postsSeenAt: new Date() } });
+    } catch {
+      // A missed update only leaves the badge up a little longer.
+    }
+  });
 
   const [allPosts, members, resources, events] = await Promise.all([
     db.post.findMany({
