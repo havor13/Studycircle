@@ -11,6 +11,7 @@ import { setListed } from "@/app/actions/discover";
 import { deleteEvent, toggleRsvp } from "@/app/actions/events";
 import { deleteResource } from "@/app/actions/resources";
 import { Avatar } from "@/components/avatar";
+import { CallBanner } from "@/components/call-banner";
 import { CommentEditForm } from "@/components/comment-edit-form";
 import { CommentForm } from "@/components/comment-form";
 import { DeleteCircleForm } from "@/components/delete-circle-form";
@@ -158,7 +159,11 @@ export default async function GroupPage({
         )}
       </div>
 
-      <div className="mt-8 grid gap-8 lg:grid-cols-[1fr_320px]">
+      <div className="mt-6">
+        <CallBanner slug={group.slug} startedAt={group.callStartedAt} by={group.callStartedByName} />
+      </div>
+
+      <div className="mt-2 grid gap-8 lg:grid-cols-[1fr_320px]">
         {/* Posts */}
         <section className="space-y-4">
           <PostForm groupId={group.id} />

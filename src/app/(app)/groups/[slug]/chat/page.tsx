@@ -7,6 +7,7 @@ import { deleteMessage } from "@/app/actions/messages";
 import { toggleMessageReaction } from "@/app/actions/reactions";
 import { Avatar } from "@/components/avatar";
 import { ChatForm } from "@/components/chat-form";
+import { CallBanner } from "@/components/call-banner";
 import { ChatLog } from "@/components/chat-log";
 import { ReportButton } from "@/components/report-button";
 import { LocalTime } from "@/components/local-time";
@@ -70,6 +71,8 @@ export default async function ChatPage({
       <p className="mb-4 mt-1 text-sm text-muted">
         New messages appear as they are sent. Showing the latest {messages.length}.
       </p>
+
+      <CallBanner slug={group.slug} startedAt={group.callStartedAt} by={group.callStartedByName} />
 
       <ChatLog groupId={group.id} count={messages.length} firstId={messages[0]?.id}>
         {messages.length === 0 ? (

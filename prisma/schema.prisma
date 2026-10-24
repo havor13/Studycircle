@@ -30,6 +30,7 @@ enum NotificationKind {
   EVENT_REMINDER // NEW in step 18
   CONTENT_REPORT // NEW in step 33
   NEW_COMMENT // NEW in step 37
+  CALL_STARTED // NEW in step 40
 }
 
 enum ReportStatus {
@@ -80,6 +81,10 @@ model Group {
   listed      Boolean  @default(false) // NEW in step 16: shown in Find circles. Off until an admin turns it on.
   inviteCode  String   @unique @default(cuid())
   createdAt   DateTime @default(now())
+
+  // NEW in step 40: the last time someone announced a call in this circle (shown as a banner for two hours)
+  callStartedAt     DateTime?
+  callStartedByName String?
 
   memberships   Membership[]
   posts         Post[]
