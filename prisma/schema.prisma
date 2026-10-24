@@ -47,6 +47,8 @@ model User {
   bio          String?
   createdAt    DateTime @default(now())
   emailNotifications Boolean @default(true) // NEW in step 15
+  emailOff           NotificationKind[] @default([]) // NEW in step 41: kinds of email this person turned off
+  emailDirectMessages Boolean @default(true) // NEW in step 41: email about private messages
   tokenVersion       Int     @default(0) // NEW in step 23: raising it logs the account out on every device
 
   memberships        Membership[]

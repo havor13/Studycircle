@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { appUrl, mailConfigured, sendMail } from "@/lib/mailer";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { EMAIL_KIND_OPTIONS } from "@/lib/email-kinds";
 import { changePasswordSchema, type FormState } from "@/lib/validations";
 
 export type PasswordState = FormState & { done?: boolean };
@@ -58,6 +59,25 @@ export async function updateProfile(_prev: ProfileState, formData: FormData): Pr
   });
 
   revalidatePath("/", "layout");
+  return { done: true };
+}
+
+export type KindsState = { done?: boolean; error?: string };
+
+/** Saves which kinds of email you want. A ticked box means "send it". */
+export async function saveEmailKinds(_prev: KindsState, formData: FormData): Promise<KindsState> {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Please log in again." };
+
+  // Only the kinds on our own list count, whatever the browser sent.
+  const wanted = new Set(formData.getAll("kinds").map(String));
+  const emailOff = EMAIL_KIND_OPTIONS.map((o) => o.kind).filter((kind) => !wanted.has(kind));
+
+  await db.user.update({
+    where: { id: session.user.id },
+    data: { emailOff, emailDirectMessages: formData.get("dm") === "on" },
+  });
+  revalidatePath("/account");
   return { done: true };
 }
 

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { Avatar } from "@/components/avatar";
 import { AvatarForm } from "@/components/avatar-form";
 import { ChangePasswordForm } from "@/components/change-password-form";
+import { EmailKindsForm } from "@/components/email-kinds-form";
 import { EmailSettings } from "@/components/email-settings";
 import { ProfileForm } from "@/components/profile-form";
 import { logoutEverywhere } from "@/app/actions/account";
@@ -18,7 +19,7 @@ export default async function AccountPage() {
 
   const user = await db.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, bio: true, email: true, image: true, emailNotifications: true },
+    select: { name: true, bio: true, email: true, image: true, emailNotifications: true, emailOff: true, emailDirectMessages: true },
   });
   if (!user) redirect("/login");
 
@@ -51,6 +52,18 @@ export default async function AccountPage() {
           email={user.email}
           enabled={user.emailNotifications}
           configured={mailConfigured()}
+        />
+      </section>
+
+      <section className="mt-6 rounded-2xl border border-line bg-surface p-5">
+        <h2 className="font-display text-lg font-bold">Which emails you get</h2>
+        <p className="mb-4 mt-1 text-sm text-muted">
+          Pick what is worth an email. Everything still shows under the bell in the app.
+        </p>
+        <EmailKindsForm
+          off={user.emailOff}
+          directMessages={user.emailDirectMessages}
+          masterOn={user.emailNotifications}
         />
       </section>
 

@@ -23,9 +23,9 @@ export function emailAboutDirectMessage(senderName: string, senderId: string, re
     try {
       const to = await db.user.findUnique({
         where: { id: recipientId },
-        select: { email: true, emailNotifications: true },
+        select: { email: true, emailNotifications: true, emailDirectMessages: true },
       });
-      if (!to || !to.emailNotifications || !isDeliverable(to.email)) return;
+      if (!to || !to.emailNotifications || !to.emailDirectMessages || !isDeliverable(to.email)) return;
 
       const base = appUrl();
       await sendMail({

@@ -1,6 +1,7 @@
 import { after } from "next/server";
 import type { NotificationKind } from "@prisma/client";
 import { db } from "@/lib/db";
+import { EMAIL_KIND_VALUES } from "@/lib/email-kinds";
 import { appUrl, isDeliverable, mailConfigured, sendMail } from "@/lib/mailer";
 
 export type NewNotification = {
@@ -35,26 +36,27 @@ export async function notify(items: NewNotification[]) {
   }
 }
 
-// Reactions would be too noisy by email. The bell still shows them.
-const EMAIL_KINDS = new Set<NotificationKind>(["NEW_POST", "NEW_EVENT", "EVENT_REMINDER", "ROLE_CHANGED", "MEMBER_JOINED", "CONTENT_REPORT", "NEW_COMMENT"]);
+// Reactions and call announcements would be too noisy by email. The bell still shows them.
 const MAX_EMAILS_PER_EVENT = 25;
 
 async function emailRecipients(items: NewNotification[]) {
   try {
-    const wanted = items.filter((item) => EMAIL_KINDS.has(item.kind)).slice(0, MAX_EMAILS_PER_EVENT);
+    const wanted = items.filter((item) => EMAIL_KIND_VALUES.has(item.kind)).slice(0, MAX_EMAILS_PER_EVENT);
     if (wanted.length === 0) return;
 
     const users = await db.user.findMany({
       where: { id: { in: wanted.map((item) => item.userId) }, emailNotifications: true },
-      select: { id: true, email: true },
+      select: { id: true, email: true, emailOff: true },
     });
-    const emailById = new Map(users.map((user) => [user.id, user.email]));
+    const personById = new Map(users.map((user) => [user.id, user]));
     const base = appUrl();
 
     await Promise.allSettled(
       wanted.map((item) => {
-        const to = emailById.get(item.userId);
-        if (!to || !isDeliverable(to)) return Promise.resolve();
+        const person = personById.get(item.userId);
+        // Skip people who turned this kind of email off on their Account page.
+        if (!person || person.emailOff.includes(item.kind) || !isDeliverable(person.email)) return Promise.resolve();
+        const to = person.email;
         return sendMail({
           to,
           subject: item.message,
