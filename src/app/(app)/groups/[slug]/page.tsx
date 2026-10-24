@@ -325,14 +325,7 @@ export default async function GroupPage({
 
           {/* Study sessions */}
           <div className="rounded-2xl border border-line bg-surface p-4">
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <h2 className="font-display text-lg font-bold">Study sessions</h2>
-              {events.length > 0 && (
-                <a href={`/api/groups/${group.id}/calendar`} download className="text-xs font-semibold text-brand hover:underline">
-                  Add all to my calendar
-                </a>
-              )}
-            </div>
+            <h2 className="font-display text-lg font-bold">Study sessions</h2>
 
             {events.length === 0 ? (
               <p className="mt-2 text-sm text-muted">No sessions planned. Propose a time.</p>
@@ -367,13 +360,6 @@ export default async function GroupPage({
                             {going ? "Going ✓ (tap to cancel)" : "I'm going"}
                           </button>
                         </form>
-                        <a
-                          href={`/api/events/${ev.id}/ics`}
-                          download
-                          className="text-xs font-semibold text-brand hover:underline"
-                        >
-                          Add to calendar
-                        </a>
                         {(ev.creatorId === userId || moderator) && (
                           <form action={deleteEvent.bind(null, ev.id)}>
                             <button className="text-xs font-semibold text-muted hover:text-red-600">
@@ -511,7 +497,9 @@ export default async function GroupPage({
                       <span className="flex items-center gap-2 font-semibold">
                         <Avatar userId={m.userId} name={m.user.name} image={m.user.image} size={26} />
                         <span>
-                          {m.user.name}
+                          <Link href={`/people/${m.userId}`} className="hover:underline">
+                            {m.user.name}
+                          </Link>
                           {m.userId === userId && <span className="text-muted"> (you)</span>}
                         </span>
                       </span>
