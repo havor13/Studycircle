@@ -71,6 +71,8 @@ model User {
   reportsMade     ContentReport[] @relation("Reporter")
   reportsHandled  ContentReport[] @relation("Resolver")
   comments        Comment[]
+  polls           Poll[] // NEW in step 49
+  pollVotes       PollVote[] // NEW in step 49
 }
 
 model Group {
@@ -97,6 +99,7 @@ model Group {
   events        StudyEvent[] // NEW in step 13
   inviteEmails  InviteEmail[] // NEW in step 17
   reports       ContentReport[]
+  polls         Poll[] // NEW in step 49
 }
 
 // Roles live here so pinned posts and moderation tools can be added later
@@ -388,4 +391,47 @@ model Comment {
   reports ContentReport[]
 
   @@index([postId, createdAt])
+}
+
+// NEW in step 49: simple polls. One vote per person, which they can change until the poll is closed.
+model Poll {
+  id        String   @id @default(cuid())
+  groupId   String
+  creatorId String
+  question  String
+  closed    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  group   Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  creator User         @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+  options PollOption[]
+  votes   PollVote[]
+
+  @@index([groupId, createdAt])
+}
+
+model PollOption {
+  id       String @id @default(cuid())
+  pollId   String
+  text     String
+  position Int
+
+  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  votes PollVote[]
+
+  @@index([pollId])
+}
+
+model PollVote {
+  id       String @id @default(cuid())
+  pollId   String
+  optionId String
+  userId   String
+
+  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
+  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([pollId, userId])
+  @@index([optionId])
 }

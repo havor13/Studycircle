@@ -18,6 +18,8 @@ import { CommentForm } from "@/components/comment-form";
 import { DeleteCircleForm } from "@/components/delete-circle-form";
 import { EventEditForm } from "@/components/event-edit-form";
 import { EventForm } from "@/components/event-form";
+import { PollForm } from "@/components/poll-form";
+import { closePoll, deletePoll, votePoll } from "@/app/actions/polls";
 import { InviteEmailForm } from "@/components/invite-email-form";
 import { InviteLink } from "@/components/invite-link";
 import { LocalTime } from "@/components/local-time";
@@ -72,7 +74,7 @@ export default async function GroupPage({
     }
   });
 
-  const [allPosts, members, resources, events] = await Promise.all([
+  const [allPosts, members, resources, events, polls] = await Promise.all([
     db.post.findMany({
       where: {
         groupId: group.id,
@@ -108,6 +110,16 @@ export default async function GroupPage({
         rsvps: { include: { user: { select: { id: true, name: true } } } },
       },
       orderBy: { startsAt: "asc" },
+      take: 10,
+    }),
+    db.poll.findMany({
+      where: { groupId: group.id },
+      include: {
+        creator: { select: { name: true } },
+        options: { orderBy: { position: "asc" }, include: { _count: { select: { votes: true } } } },
+        votes: { where: { userId }, select: { optionId: true } },
+      },
+      orderBy: [{ closed: "asc" }, { createdAt: "desc" }],
       take: 10,
     }),
   ]);
@@ -332,6 +344,90 @@ export default async function GroupPage({
               </details>
             </div>
           )}
+
+          {/* Polls */}
+          <div className="rounded-2xl border border-line bg-surface p-4">
+            <h2 className="font-display text-lg font-bold">Polls</h2>
+
+            {polls.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">No polls yet. Ask the circle something.</p>
+            ) : (
+              <ul className="mt-3 space-y-5">
+                {polls.map((poll) => {
+                  const total = poll.options.reduce((sum, o) => sum + o._count.votes, 0);
+                  const myVote = poll.votes[0]?.optionId;
+                  const canManage = poll.creatorId === userId || moderator;
+                  return (
+                    <li key={poll.id} className="text-sm">
+                      <p className="font-semibold">{poll.question}</p>
+                      <p className="text-xs text-muted">
+                        by {poll.creator.name} · {total} {total === 1 ? "vote" : "votes"}
+                        {poll.closed && " · closed"}
+                      </p>
+                      <ul className="mt-2 space-y-1.5">
+                        {poll.options.map((o) => {
+                          const pct = total > 0 ? Math.round((o._count.votes / total) * 100) : 0;
+                          const mine = myVote === o.id;
+                          const bar = (
+                            <span className="relative block overflow-hidden rounded-lg border border-line px-3 py-1.5 text-left">
+                              <span
+                                aria-hidden="true"
+                                className="absolute inset-y-0 left-0 bg-brand/15"
+                                style={{ width: `${pct}%` }}
+                              />
+                              <span className="relative flex items-center justify-between gap-2">
+                                <span className={mine ? "font-semibold" : undefined}>
+                                  {o.text}
+                                  {mine && <span className="text-xs text-muted"> (your vote)</span>}
+                                </span>
+                                <span className="text-xs text-muted">
+                                  {o._count.votes} · {pct}%
+                                </span>
+                              </span>
+                            </span>
+                          );
+                          return (
+                            <li key={o.id}>
+                              {poll.closed ? (
+                                bar
+                              ) : (
+                                <form action={votePoll.bind(null, poll.id, o.id)}>
+                                  <button
+                                    className="block w-full hover:opacity-90"
+                                    aria-pressed={mine}
+                                    aria-label={`Vote for ${o.text}`}
+                                  >
+                                    {bar}
+                                  </button>
+                                </form>
+                              )}
+                            </li>
+                          );
+                        })}
+                      </ul>
+                      {canManage && (
+                        <div className="mt-2 flex gap-3 text-xs">
+                          {!poll.closed && (
+                            <form action={closePoll.bind(null, poll.id)}>
+                              <button className="font-semibold text-brand hover:underline">Close poll</button>
+                            </form>
+                          )}
+                          <form action={deletePoll.bind(null, poll.id)}>
+                            <button className="font-semibold text-red-600 hover:underline">Delete</button>
+                          </form>
+                        </div>
+                      )}
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            <details className="mt-4 border-t border-line pt-3">
+              <summary className="cursor-pointer text-sm font-semibold text-brand">Start a poll</summary>
+              <PollForm groupId={group.id} />
+            </details>
+          </div>
 
           {/* Study sessions */}
           <div className="rounded-2xl border border-line bg-surface p-4">
